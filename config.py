@@ -23,9 +23,9 @@ def get_parser(name):
     return parser
 
 teacher_model_dict = {
-            'roberta':'/disk1/wuxiangbo/darts-KD/teacher_utils/teacher_model/robert_mrpc',
+            'roberta':'/disk1/wuxiangbo/pretrainModel/roberta/robert_mrpc',
             'gpt2':'/disk1/wuxiangbo/darts-KD/teacher_utils/teacher_model/gpt2_mrpc',
-            'bert':'/disk1/wuxiangbo/darts-KD/teacher_utils/teacher_model/bert_mrpc'
+            'bert':'/disk1/wuxiangbo/pretrainModel/bert/bert_mrpc'
         }
 def parse_gpus(gpus):
     if gpus == 'all':
