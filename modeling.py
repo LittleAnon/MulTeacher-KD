@@ -22,22 +22,16 @@ import json
 import logging
 import math
 import os
-import shutil
-import tarfile
-import tempfile
+import re
 import sys
 from io import open
-import re
+
 import torch
 import torch.nn.functional as F
 from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss
-from torch.autograd import Variable
-from torch.nn.parameter import Parameter
-
 # from .file_utils import WEIGHTS_NAME, CONFIG_NAME
-from transformers import RobertaModel, GPT2PreTrainedModel, GPT2Model
-from transformers.modeling_roberta import RobertaPreTrainedModel
+from transformers import GPT2PreTrainedModel, GPT2Model
 
 WEIGHTS_NAME = 'pytorch_model.bin'
 CONFIG_NAME = 'config.json'
@@ -1184,49 +1178,49 @@ class TinyBertForSequenceClassification(BertPreTrainedModel):
         if attention_out:
             return logits, attns, sequence_output
         return logits, sequence_output
-
-class RoBertaForSequenceClassification(RobertaPreTrainedModel):
-    r"""
-        Method overriding of BertForSequenceClassification to adapt it to multi-label classification
-        Changes: labels vector is extended to the number labels instead of 1
-    """
-    def __init__(self, config):
-        super().__init__(config)
-        self.num_labels = config.num_labels
-
-        self.roberta = RobertaModel(config)
-        self.dropout = nn.Dropout(0.1)
-        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
-
-        self.init_weights()
-
-    def forward(self, input_ids=None,token_type_ids=None, attention_mask=None,
-                position_ids=None, head_mask=None, inputs_embeds=None, labels=None):
-        check_id = input_ids.cpu()
-        check_att = attention_mask.cpu()
-        check_tok = token_type_ids.cpu()
-        outputs = self.roberta(input_ids,
-                            attention_mask=attention_mask,
-                            #token_type_ids=token_type_ids,
-                            position_ids=position_ids,
-                            head_mask=head_mask,
-                            output_hidden_states=True)
-        pooled_output = outputs[1]
-        pooled_output.cpu()
-
-        pooled_output = self.dropout(pooled_output)
-        logits = self.classifier(pooled_output)
-
-        outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
-
-        if labels is not None:
-            loss_fct = nn.BCEWithLogitsLoss()
-        #Changes: labels vector is extended to the number labels instead of 1
-            loss = loss_fct(logits.view(-1, self.num_labels),
-                            labels.view(-1, self.num_labels).type_as(logits.view(-1, self.num_labels)))
-            outputs = (loss,) + outputs
-
-        return outputs  # (loss), logits, (hidden_states), (attentions)
+#
+# class RoBertaForSequenceClassification(RobertaPreTrainedModel):
+#     r"""
+#         Method overriding of BertForSequenceClassification to adapt it to multi-label classification
+#         Changes: labels vector is extended to the number labels instead of 1
+#     """
+#     def __init__(self, config):
+#         super().__init__(config)
+#         self.num_labels = config.num_labels
+#
+#         self.roberta = RobertaModel(config)
+#         self.dropout = nn.Dropout(0.1)
+#         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+#
+#         self.init_weights()
+#
+#     def forward(self, input_ids=None,token_type_ids=None, attention_mask=None,
+#                 position_ids=None, head_mask=None, inputs_embeds=None, labels=None):
+#         check_id = input_ids.cpu()
+#         check_att = attention_mask.cpu()
+#         check_tok = token_type_ids.cpu()
+#         outputs = self.roberta(input_ids,
+#                             attention_mask=attention_mask,
+#                             #token_type_ids=token_type_ids,
+#                             position_ids=position_ids,
+#                             head_mask=head_mask,
+#                             output_hidden_states=True)
+#         pooled_output = outputs[1]
+#         pooled_output.cpu()
+#
+#         pooled_output = self.dropout(pooled_output)
+#         logits = self.classifier(pooled_output)
+#
+#         outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
+#
+#         if labels is not None:
+#             loss_fct = nn.BCEWithLogitsLoss()
+#         #Changes: labels vector is extended to the number labels instead of 1
+#             loss = loss_fct(logits.view(-1, self.num_labels),
+#                             labels.view(-1, self.num_labels).type_as(logits.view(-1, self.num_labels)))
+#             outputs = (loss,) + outputs
+#
+#         return outputs  # (loss), logits, (hidden_states), (attentions)
 
 class GPT2ForSequenceClassification(GPT2PreTrainedModel):
     def __init__(self, config):

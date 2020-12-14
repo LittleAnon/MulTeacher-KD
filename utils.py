@@ -1,25 +1,22 @@
 """ Utilities """
-import os
 import logging
-import shutil
-import torch
-import numpy as np
-from datasets import load_dataset
-from pytorch_pretrained_bert import GPT2Config
-
-from dataset import OneInputDataset, MultiTaskDataset, MultiTaskBatchSampler, get_tensor_data
+import os
 import random
-from scipy.stats import pearsonr, spearmanr
-from torch.utils.data.sampler import RandomSampler, SubsetRandomSampler, SequentialSampler
-from torch.utils.data.distributed import DistributedSampler
-from torch.utils.data import DataLoader
+import shutil
 
-from modeling import BertConfig
-from vocabulary import Vocabulary
-from bert_fineturn.data_processor.glue import glue_compute_metrics as compute_metrics
+import numpy as np
+import torch
+from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import matthews_corrcoef, f1_score
-from transformers import GPT2Tokenizer, GPT2Model, GPT2PreTrainedModel, RobertaTokenizer, RobertaConfig, AutoTokenizer, \
-    AutoConfig
+from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data.sampler import RandomSampler, SequentialSampler
+from transformers import RobertaConfig, AutoTokenizer, \
+    GPT2Config
+
+from bert_fineturn.data_processor.glue import glue_compute_metrics as compute_metrics
+from dataset import OneInputDataset, get_tensor_data
+from vocabulary import Vocabulary
 
 DATASET_TYPE = {
     'mrpc': 2,
@@ -588,7 +585,6 @@ def load_data(config, logger):
 def load_glue_dataset(config):
     from bert_fineturn.data_processor.glue import glue_processors as processors
     from bert_fineturn.data_processor.glue import glue_output_modes as output_modes
-    from tokenization import BertTokenizer
     from modeling import BertConfig
 
     task_name = config.datasets
