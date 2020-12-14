@@ -17,7 +17,7 @@ from models.augment_cnn import AugmentCNN
 acc_tasks = ["mnli", "mrpc", "sst-2", "qqp", "qnli", "rte", "books"]
 corr_tasks = ["sts-b"]
 mcc_tasks = ["cola"]
-os.environ['CUDA_VISIBLE_DEVICES'] = '7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 from transformers import RobertaForSequenceClassification, GPT2ForSequenceClassification
 
@@ -77,6 +77,10 @@ def main():
     elif config.teacher_type == 'roberta':
         utils.load_roberta_embedding_weight(model,
                                          config.teacher_model)
+    elif config.teacher_type == 'rAg':
+        utils.load_roberta_embedding_weight(model,config.teacher_model[0])
+
+
     for k, v in model.named_parameters():
         new_d[k] = torch.sum(v)
         
@@ -101,8 +105,15 @@ def main():
             teacher_model = TinyBertForSequenceClassification.from_pretrained(config.teacher_model,num_labels=n_classes)
         elif config.teacher_type == 'roberta':
             teacher_model = RobertaForSequenceClassification.from_pretrained(config.teacher_model)
-        teacher_model = teacher_model.to(device)
-        teacher_model.eval()
+        if config.teacher_type == 'rAg':
+            teacher_model = [RobertaForSequenceClassification.from_pretrained(config.teacher_model[0]),GPT2ForSequenceClassification.from_pretrained(config.teacher_model[1], num_labels=n_classes)]
+            teacher_model[0] = teacher_model[0].to(device)
+            teacher_model[0].eval()
+            teacher_model[1] = teacher_model[1].to(device)
+            teacher_model[1].eval()
+        else:
+            teacher_model = teacher_model.to(device)
+            teacher_model.eval()
 
     # model size
     mb_params = utils.param_size(model)
@@ -129,8 +140,14 @@ def main():
 
         lr_scheduler.step()
         # validation
-        cur_step = (epoch + 1) * len(train_dataloader)
-        top1 = validate(logger, config, eval_dataloader, model, epoch, cur_step, task_name.lower(), "val")
+        if config.teacher_type == 'rAg':
+            cur_step = (epoch + 1) * len(train_dataloader[0])
+            top1 = validate(logger, config, eval_dataloader[0], model, epoch, cur_step, task_name.lower(), "val")
+        else:
+            cur_step = (epoch + 1) * len(train_dataloader)
+            top1 = validate(logger, config, eval_dataloader, model, epoch, cur_step, task_name.lower(), "val")
+
+
         # top1 = validate(test_loader, model, criterion, epoch, cur_step, "test", len(task_types))
         # save
         if best_top1 < top1:
@@ -150,8 +167,11 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
     top1 = utils.AverageMeter()
     losses = utils.AverageMeter()
 
-    total_num_step = len(train_loader)
-    cur_step = epoch * len(train_loader)
+    if config.teacher_type != 'rAg':
+        train_loader = [train_loader]
+
+    total_num_step = len(train_loader[0])
+    cur_step = epoch * len(train_loader[0])
     cur_lr = optimizer.param_groups[0]['lr']
 
     logger.info("Epoch {} LR {}".format(epoch, cur_lr))
@@ -163,8 +183,15 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
     elif model.output_mode == "regression":
         criterion = nn.MSELoss()
 
-    for step, data in enumerate(train_loader):
-        data = [x.to("cuda", non_blocking=True) for x in data]
+    loader_data = [i for i in train_loader[0]]
+
+    if config.teacher_type == 'rAg':
+        loader_data_plus = [i for i in train_loader[0]]
+
+
+    for step in range(loader_data.__len__()):
+        data = [x.to("cuda", non_blocking=True) for x in loader_data[step]]
+
         input_ids, input_mask, segment_ids, label_ids, seq_lengths = data
 #       [32,128]    [32,128]   [32,128]      [32]         [32]
         X = [input_ids, input_mask, segment_ids, seq_lengths]
@@ -188,6 +215,21 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
                 teacher_logits, teacher_reps = output_dict.logits,output_dict.hidden_states
             elif config.teacher_type == 'bert':
                 teacher_logits, teacher_reps = teacher_model(input_ids, segment_ids, input_mask)
+
+            elif config.teacher_type == 'rAg':
+                output_dict_r = teacher_model[0](input_ids, attention_mask=input_mask, output_hidden_states=True,return_dict=True)
+                teacher_logits_r = output_dict_r.logits
+                teacher_reps_r =  output_dict_r.hidden_states
+
+                data_plus = [x.to("cuda", non_blocking=True) for x in loader_data_plus[step]]
+                input_ids_p, input_mask_p, segment_ids_p, label_ids_p, seq_lengths_p = data_plus
+                output_dict_g = teacher_model[1](input_ids_p, attention_mask=input_mask_p, output_hidden_states=True,return_dict=True)
+                teacher_logits_g = output_dict_g.logits
+                teacher_reps_g =  output_dict_g.hidden_states
+                teacher_logits = torch.add(teacher_logits_r, teacher_logits_g)
+                teacher_logits = teacher_logits / 2
+                teacher_reps = teacher_reps_r + teacher_reps_g
+
             # print(np.argmax(teacher_logits.detach().cpu().numpy(),axis=1))
             # print(label_ids.cpu().numpy())
             # print("#####################################################")

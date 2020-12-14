@@ -65,6 +65,8 @@ class AugmentCNN(nn.Module):
             self.stem = blocks.BertEmbeddings(config.bert_config)
         elif config.teacher_type == 'roberta':
             self.stem = blocks.RobertaEmbeddings(config.roberta_config)
+        elif config.teacher_type == 'rAg':
+            self.stem = blocks.RobertaEmbeddings(config.roberta_config)
         self.hidn2attn = config.hidn2attn
         self.attn_cells = nn.ModuleList()
         # self.self_attention_output = config.self_attention_output

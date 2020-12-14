@@ -257,93 +257,101 @@ def convert_examples_to_features_v2(examples, label_list, max_seq_length, tokeni
     return features
 
 
-def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer, output_mode, is_master=True, gpt2=False,tok_type = None):
+def convert_examples_to_features(examples, label_list, max_seq_length, tokenizers, output_mode, is_master=True, tok_type = None):
     """Loads a data file into a list of `InputBatch`s."""
 
     label_map = {label: i for i, label in enumerate(label_list)}
 
-    features = []
-    for (ex_index, example) in enumerate(examples):
-        if ex_index % 10000 == 0 and is_master:
-            print("Writing example %d of %d" % (ex_index, len(examples)))
+    features = [[],[]]
+    if tok_type is 'rAg':
+        tok_type_list = ['roberta', 'gpt2']
+    else:
+        tok_type_list = [tok_type]
+        tokenizers = [tokenizers]
+    for i in range(len(tok_type_list)):
+        tokenizer = tokenizers[i]
+        tok_type = tok_type_list[i]
 
-        tokens_a = tokenizer.tokenize(example.text_a)
+        for (ex_index, example) in enumerate(examples):
+            if ex_index % 10000 == 0 and is_master:
+                print("Writing example %d of %d" % (ex_index, len(examples)))
 
-        tokens_b = None
-        if example.text_b:
-            tokens_b = tokenizer.tokenize(example.text_b)
-            _truncate_seq_pair(tokens_a, tokens_b, max_seq_length - 3)
-        else:
-            if gpt2:
-                if len(tokens_a) > max_seq_length - 1:
-                    tokens_a = tokens_a[:(max_seq_length - 1)]
+            tokens_a = tokenizer.tokenize(example.text_a)
+            tokens_b = None
+            if example.text_b:
+                tokens_b = tokenizer.tokenize(example.text_b)
+                _truncate_seq_pair(tokens_a, tokens_b, max_seq_length - 3)
             else:
-                if len(tokens_a) > max_seq_length - 2:
-                    tokens_a = tokens_a[:(max_seq_length - 2)]
-        ## 和finetune的数据格式保持一致，bert和gpt2和roberta的特殊字符添加格式还不太一样
-        if tok_type == 'bert':
-            cls_ = tokenizer.cls_token
-            sep_ = tokenizer.sep_token
-            pad_ = tokenizer.pad_token_id
-            tokens = [cls_] + tokens_a + [sep_]
-        elif tok_type == 'gpt2':
-            cls_ = tokenizer.bos_token
-            sep_ = tokenizer.eos_token
-            pad_ = tokenizer.pad_token_id
-            tokens =  tokens_a
-        elif tok_type == 'roberta':
-            cls_ = tokenizer.cls_token
-            sep_ = tokenizer.sep_token
-            pad_ = tokenizer.pad_token_id
-            tokens = [cls_] + tokens_a + [sep_]
+                if tok_type == 'gpt2':
+                    if len(tokens_a) > max_seq_length - 1:
+                        tokens_a = tokens_a[:(max_seq_length - 1)]
+                else:
+                    if len(tokens_a) > max_seq_length - 2:
+                        tokens_a = tokens_a[:(max_seq_length - 2)]
+            ## 和finetune的数据格式保持一致，bert和gpt2和roberta的特殊字符添加格式还不太一样
+            if tok_type == 'bert':
+                cls_ = tokenizer.cls_token
+                sep_ = tokenizer.sep_token
+                pad_ = tokenizer.pad_token_id
+                tokens = [cls_] + tokens_a + [sep_]
+            elif tok_type == 'gpt2':
+                cls_ = tokenizer.bos_token
+                sep_ = tokenizer.eos_token
+                pad_ = tokenizer.pad_token_id
+                tokens = tokens_a
+            elif tok_type == 'roberta':
+                cls_ = tokenizer.cls_token
+                sep_ = tokenizer.sep_token
+                pad_ = tokenizer.pad_token_id
+                tokens = [cls_] + tokens_a + [sep_]
+                if tokens_b:
+                    tokens = tokens + [sep_]
+
+            segment_ids = [0] * len(tokens)
+
             if tokens_b:
-                tokens = tokens + [sep_]
+                tokens += tokens_b + [sep_]
+                segment_ids += [1] * (len(tokens_b) + 1)
 
+            input_ids = tokenizer.convert_tokens_to_ids(tokens)
+            input_mask = [1] * len(input_ids)
+            seq_length = len(input_ids)
 
-        segment_ids = [0] * len(tokens)
+            padding = [0] * (max_seq_length - len(input_ids))
+            id_padding = [pad_] * (max_seq_length - len(input_ids))
+            input_ids += id_padding
+            input_mask += padding
+            segment_ids += padding
 
-        if tokens_b:
-            tokens += tokens_b + [sep_]
-            segment_ids += [1] * (len(tokens_b) + 1)
+            assert len(input_ids) == max_seq_length
+            assert len(input_mask) == max_seq_length
+            assert len(segment_ids) == max_seq_length
 
-        input_ids = tokenizer.convert_tokens_to_ids(tokens)
-        input_mask = [1] * len(input_ids)
-        seq_length = len(input_ids)
+            if output_mode == "classification":
+                label_id = label_map[example.label]
+            elif output_mode == "regression":
+                label_id = float(example.label)
+            else:
+                raise KeyError(output_mode)
 
-        padding = [0] * (max_seq_length - len(input_ids))
-        id_padding = [pad_] * (max_seq_length - len(input_ids))
-        input_ids += id_padding
-        input_mask += padding
-        segment_ids += padding
+            if ex_index == 0 and is_master:
+                print("*** Example for %s ***" % (tok_type))
+                print("guid: %s" % (example.guid))
+                print("tokens: %s" % " ".join([str(x) for x in tokens]))
+                print("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+                print("input_mask: %s" % " ".join([str(x) for x in input_mask]))
+                print("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
+                print("label: {}".format(example.label))
+                print("label_id: {}".format(label_id))
 
-        assert len(input_ids) == max_seq_length
-        assert len(input_mask) == max_seq_length
-        assert len(segment_ids) == max_seq_length
+            features[i].append(
+                InputFeatures(
+                    input_ids=input_ids,
+                    input_mask=input_mask,
+                    segment_ids=segment_ids,
+                    label_id=label_id,
+                    seq_length=seq_length))
 
-        if output_mode == "classification":
-            label_id = label_map[example.label]
-        elif output_mode == "regression":
-            label_id = float(example.label)
-        else:
-            raise KeyError(output_mode)
-
-        if ex_index == 0 and is_master:
-            print("*** Example ***")
-            print("guid: %s" % (example.guid))
-            print("tokens: %s" % " ".join([str(x) for x in tokens]))
-            print("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-            print("input_mask: %s" % " ".join([str(x) for x in input_mask]))
-            print("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
-            print("label: {}".format(example.label))
-            print("label_id: {}".format(label_id))
-
-        features.append(
-            InputFeatures(
-                input_ids=input_ids,
-                input_mask=input_mask,
-                segment_ids=segment_ids,
-                label_id=label_id,
-                seq_length=seq_length))
     return features
 
 
@@ -590,36 +598,75 @@ def load_glue_dataset(config):
     n_classes = len(label_list)
 
 
-    tokenizer = AutoTokenizer.from_pretrained(
-        config.tokenizer_name if config.tokenizer_name else config.teacher_model,
+    if config.teacher_type == 'rAg':
+        tokenizer_r = AutoTokenizer.from_pretrained(
+            config.tokenizer_name if config.tokenizer_name else config.teacher_model[0],
 
-        use_fast=config.use_fast_tokenizer
-    )
+            use_fast=config.use_fast_tokenizer
+        )
+        tokenizer_g = AutoTokenizer.from_pretrained(
+            config.tokenizer_name if config.tokenizer_name else config.teacher_model[1],
+
+            use_fast=config.use_fast_tokenizer
+        )
+        tokenizer = [tokenizer_r ,tokenizer_g]
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(
+            config.tokenizer_name if config.tokenizer_name else config.teacher_model,
+
+            use_fast=config.use_fast_tokenizer
+        )
 
     train_examples = processor.get_train_examples('data/' + config.source + '/' + task_name + '/')
     train_features = convert_examples_to_features(train_examples, label_list,
                                                         config.max_seq_length, tokenizer,
-                                                        output_mode, config.is_master,gpt2=config.teacher_type == 'gpt2',tok_type=config.teacher_type)
-    train_data, _ = get_tensor_data(output_mode, train_features)
+                                                        output_mode, config.is_master,tok_type=config.teacher_type)
+
     eval_examples = processor.get_dev_examples('data/' + config.source + '/' + task_name +
-                                        '/')
+                                               '/')
     eval_features = convert_examples_to_features(eval_examples, label_list,
-                                                    config.max_seq_length, tokenizer,
-                                                    output_mode, config.is_master,gpt2=config.teacher_type == 'gpt2',tok_type=config.teacher_type)
-    eval_data, eval_labels = get_tensor_data(output_mode, eval_features)
-    train_eval_data, _ = get_tensor_data(output_mode, eval_features)
+                                                 config.max_seq_length, tokenizer,
+                                                 output_mode, config.is_master,
+                                                 tok_type=config.teacher_type)
 
-    if not config.multi_gpu:
-        train_sampler = RandomSampler(train_data)
-        train_eval_sampler = RandomSampler(train_eval_data)
+
+    if config.teacher_type == 'rAg':
+        train_dataloader = []
+        eval_dataloader = []
+        train_eval_dataloader = []
+        for i in range(2):
+            train_data, _ = get_tensor_data(output_mode, train_features[i])
+            eval_data, eval_labels = get_tensor_data(output_mode, eval_features[i])
+            train_eval_data, _ = get_tensor_data(output_mode, eval_features[i])
+            if not config.multi_gpu:
+                train_sampler = RandomSampler(train_data)
+                train_eval_sampler = RandomSampler(train_eval_data)
+            else:
+                train_sampler = DistributedSampler(train_data)
+                train_eval_sampler = DistributedSampler(train_eval_data)
+            eval_sampler = SequentialSampler(eval_data)
+
+            train_dataloader.append(DataLoader(train_data, sampler=train_sampler, batch_size=config.batch_size))
+            eval_dataloader.append(DataLoader(eval_data, sampler=eval_sampler, batch_size=config.batch_size))
+            train_eval_dataloader.append(DataLoader(train_eval_data, sampler=train_eval_sampler,
+                                               batch_size=config.batch_size))
     else:
-        train_sampler = DistributedSampler(train_data)
-        train_eval_sampler = DistributedSampler(train_eval_data)
-    eval_sampler = SequentialSampler(eval_data)
+        train_data, _ = get_tensor_data(output_mode, train_features)
+        eval_data, eval_labels = get_tensor_data(output_mode, eval_features)
+        train_eval_data, _ = get_tensor_data(output_mode, eval_features)
+        if not config.multi_gpu:
+            train_sampler = RandomSampler(train_data)
+            train_eval_sampler = RandomSampler(train_eval_data)
+        else:
+            train_sampler = DistributedSampler(train_data)
+            train_eval_sampler = DistributedSampler(train_eval_data)
+        eval_sampler = SequentialSampler(eval_data)
 
-    train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=config.batch_size)
-    eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=config.batch_size)
-    train_eval_dataloader = DataLoader(train_eval_data, sampler=train_eval_sampler, batch_size=config.batch_size)
+        train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=config.batch_size)
+        eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=config.batch_size)
+        train_eval_dataloader = DataLoader(train_eval_data, sampler=train_eval_sampler, batch_size=config.batch_size)
+
+
 
 
     if config.teacher_type == 'bert':
@@ -632,6 +679,13 @@ def load_glue_dataset(config):
     elif config.teacher_type == 'roberta':
         config.roberta_config = RobertaConfig.from_json_file(
             config.teacher_model + "/config.json")
+        config.hidden_size = config.roberta_config.hidden_size
+    elif config.teacher_type == 'rAg':
+        config.roberta_config = RobertaConfig.from_json_file(
+            config.teacher_model[0] + "/config.json")
+        config.gpt_config = GPT2Config.from_json_file(
+            config.teacher_model[1] + "/config.json")
+        ##因为是一样的，所以用哪个去填hidden_size无所谓
         config.hidden_size = config.roberta_config.hidden_size
 
     return train_dataloader, train_eval_dataloader, eval_dataloader, output_mode, n_classes, config
