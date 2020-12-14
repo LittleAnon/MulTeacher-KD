@@ -89,14 +89,14 @@ class DataTrainingArguments:
     )
 
     glue_datasets_local_dir :Optional[str] = field(
-        default= "/disk1/wuxiangbo/datasets-master/datasets/glue",
+        default= "~/program/data/datasets-master/datasets/glue",
         metadata={
             "help":"local glue datasets dir."
         }
     )
 
     glue_metrics_local_dir: Optional[str] = field(
-        default="/disk1/wuxiangbo/datasets-master/metrics/glue",
+        default="~/program/data/datasets-master/metrics/glue",
         metadata={
             "help": "local glue metrics dir."
         }
@@ -151,7 +151,7 @@ class ModelArguments:
     )
 
 cache_dict = {
-    'bert' :['/disk1/wuxiangbo/pretrainModel/bert/bert_base_uncased','/disk1/wuxiangbo/pretrainModel/bert/bert_mrpc'],
+    'bert' :['~/program/embedding/bert_pretrained_model/uncased_L-12_H-768_A-12','~/program/embedding/bert_pretrained_model/bert/bert_mrpc'],
     'roberta' :['/disk1/wuxiangbo/pretrainModel/roberta/roberta-base','/disk1/wuxiangbo/pretrainModel/roberta/robert_mrpc'],
     'gpt2' :['/disk1/wuxiangbo/pretrainModel/gpt2/gpt2-base','/disk1/wuxiangbo/pretrainModel/gpt2/gpt2_mrpc']
 }
