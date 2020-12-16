@@ -152,7 +152,7 @@ class ModelArguments:
 
 cache_dict = {
     'bert' :['/root/program/embedding/bert_pretrained_model/uncased_L-12_H-768_A-12','/root/program/embedding/bert_pretrained_model/bert/bert_mrpc'],
-    'roberta' :['/root/program/embedding/bert_pretrained_model/roberta-base','/root/program/embedding/bert_pretrained_model/roberta/robert_mrpc'],
+    'roberta' :['/root/program/embedding/bert_pretrained_model/roberta/roberta-base','/root/program/embedding/bert_pretrained_model/roberta/robert_mrpc'],
     'gpt2' :['/root/program/embedding/bert_pretrained_model/gpt2/gpt2-base','/root/program/embedding/bert_pretrained_model/gpt2/gpt2_mrpc']
 }
 def main():
