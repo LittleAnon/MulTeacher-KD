@@ -23,9 +23,9 @@ def get_parser(name):
     return parser
 
 teacher_model_dict = {
-            'roberta':'/disk1/wuxiangbo/pretrainModel/roberta/robert_mrpc',
+            'roberta':'/root/program/embedding/bert_pretrained_model/roberta/robert_mrpc',
             'gpt2':'/disk1/wuxiangbo/pretrainModel/gpt2/gpt2_mrpc',
-            'bert':'/disk1/wuxiangbo/pretrainModel/bert/bert_mrpc',
+            'bert':'/root/program/embedding/bert_pretrained_model/bert/bert_mrpc',
             'rAg':['/disk1/wuxiangbo/pretrainModel/roberta/robert_mrpc','/disk1/wuxiangbo/pretrainModel/gpt2/gpt2_mrpc']
 
         }
