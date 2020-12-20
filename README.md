@@ -10,7 +10,7 @@ Liu, Hanxiao, Karen Simonyan, and Yiming Yang. "Darts: Differentiable architectu
     - First install using `apt install` and then `pip install`.
 - numpy
 - tensorboardX
-- transformers
+- transformers=4.0.1
 
 ## Run example
 
@@ -18,7 +18,8 @@ Liu, Hanxiao, Karen Simonyan, and Yiming Yang. "Darts: Differentiable architectu
 
 ```shell
 # genotype from search results
-python3 augment.py --name sst --dataset sst --batch_size 256 --epochs 250 --limit 128 --n_classes 2 --genotype "Genotype(normal=[[('conv_3x3', 0)], [('highway', 0)], [('conv_3x3', 2)], [('conv_5x5', 1)], [('conv_3x3', 3)], [('conv_3x3', 1)]], normal_concat=range(1, 7), reduce=[], reduce_concat=range(1, 7))"
+# python3 augment.py --name sst --dataset sst --batch_size 256 --epochs 250 --limit 128 --n_classes 2 --genotype "Genotype(normal=[[('conv_3x3', 0)], [('highway', 0)], [('conv_3x3', 2)], [('conv_5x5', 1)], [('conv_3x3', 3)], [('conv_3x3', 1)]], normal_concat=range(1, 7), reduce=[], reduce_concat=range(1, 7))"
+python3 augment.py --name mrpc --dataset mrpc --batch_size 12 --epochs 25 --limit 128 --n_classes 2  --teacher_type bert
 ```
 
 ### Cautions
@@ -39,7 +40,7 @@ https://github.com/quark0/darts (official implementation)
 - Supporting multi-gpu
 - Code that is easy to read and commented.
 - Implemenation of architect
-    - Original implementation is very slow in pytorch >= 0.4.
+- Original implementation is very slow in pytorch >= 0.4.
 - Tested on FashionMNIST / MNIST
 - Tensorboard
 - No RNN
