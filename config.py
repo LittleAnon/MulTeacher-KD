@@ -26,7 +26,7 @@ teacher_model_dict = {
             'roberta':'/root/program/embedding/bert_pretrained_model/roberta/robert_mrpc',
             'gpt2':'/root/program/embedding/bert_pretrained_model/gpt2/gpt2_mrpc',
             'bert':'/root/program/embedding/bert_pretrained_model/bert/bert_mrpc',
-            'rAg':['/disk1/wuxiangbo/pretrainModel/roberta/robert_mrpc','/disk1/wuxiangbo/pretrainModel/gpt2/gpt2_mrpc']
+            'rAg':['/root/program/embedding/bert_pretrained_model/roberta/robert_mrpc','/root/program/embedding/bert_pretrained_model/gpt2/gpt2_mrpc']
 
         }
 def parse_gpus(gpus):
