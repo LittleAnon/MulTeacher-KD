@@ -335,10 +335,10 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
             if ex_index == 0 and is_master:
                 print("*** Example for %s ***" % (tok_type))
                 print("guid: %s" % (example.guid))
-                print("tokens: %s" % " ".join([x for x in tokens]).encode('utf-8'))
-                print("input_ids: %s" % " ".join([x for x in input_ids]))
-                print("input_mask: %s" % " ".join([x for x in input_mask]))
-                print("segment_ids: %s" % " ".join([x for x in segment_ids]))
+                print("tokens: %s" % " ".join([str(x) for x in tokens]).encode('utf-8'))
+                print("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+                print("input_mask: %s" % " ".join([str(x) for x in input_mask]))
+                print("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
                 print("label: {}".format(example.label))
                 print("label_id: {}".format(label_id))
 
