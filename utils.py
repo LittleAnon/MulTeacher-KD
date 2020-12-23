@@ -1,3 +1,4 @@
+#coding=utf-8
 """ Utilities """
 import logging
 import os

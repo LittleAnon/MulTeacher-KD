@@ -1,3 +1,4 @@
+#coding=utf-8
 """ Training augmented model """
 import os
 from math import sqrt
