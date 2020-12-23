@@ -167,15 +167,16 @@ def main():
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    # 为了不每回都传两长串路径，加了个这个
-    if model_args.cache_model_type is not None:
-        model_args.model_name_or_path,training_args.output_dir = cache_dict[model_args.cache_model_type]
-
     cache_dict = {
     'bert' :['/root/program/embedding/bert_pretrained_model/bert/bert-base','/root/program/embedding/bert_pretrained_model/bert/bert_{}'.format(data_args.task_name)],
     'roberta' :['/root/program/embedding/bert_pretrained_model/roberta/roberta-base','/root/program/embedding/bert_pretrained_model/roberta/robert_{}'.format(data_args.task_name)],
     'gpt2' :['/root/program/embedding/bert_pretrained_model/gpt2/gpt2-base','/root/program/embedding/bert_pretrained_model/gpt2/gpt2_{}'.format(data_args.task_name)]
     }
+    # 为了不每回都传两长串路径，加了个这个
+    if model_args.cache_model_type is not None:
+        model_args.model_name_or_path,training_args.output_dir = cache_dict[model_args.cache_model_type]
+
+    
 
     if (
         os.path.exists(training_args.output_dir)
