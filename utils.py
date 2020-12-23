@@ -331,7 +331,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
             else:
                 raise KeyError(output_mode)
 
-            if ex_index <= 1 and is_master:
+            if ex_index == 0 and is_master:
                 print("*** Example for %s ***" % (tok_type))
                 print("guid: %s" % (example.guid))
                 print("tokens: %s" % " ".join([str(x) for x in tokens]))
