@@ -150,11 +150,7 @@ class ModelArguments:
         metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
     )
 
-cache_dict = {
-    'bert' :['/root/program/embedding/bert_pretrained_model/bert/bert-base','/root/program/embedding/bert_pretrained_model/bert/bert_mrpc'],
-    'roberta' :['/root/program/embedding/bert_pretrained_model/roberta/roberta-base','/root/program/embedding/bert_pretrained_model/roberta/robert_mrpc'],
-    'gpt2' :['/root/program/embedding/bert_pretrained_model/gpt2/gpt2-base','/root/program/embedding/bert_pretrained_model/gpt2/gpt2_mrpc']
-}
+
 def main():
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
@@ -175,7 +171,11 @@ def main():
     if model_args.cache_model_type is not None:
         model_args.model_name_or_path,training_args.output_dir = cache_dict[model_args.cache_model_type]
 
-
+    cache_dict = {
+    'bert' :['/root/program/embedding/bert_pretrained_model/bert/bert-base','/root/program/embedding/bert_pretrained_model/bert/bert_{}'.format(data_args.task_name)],
+    'roberta' :['/root/program/embedding/bert_pretrained_model/roberta/roberta-base','/root/program/embedding/bert_pretrained_model/roberta/robert_{}'.format(data_args.task_name)],
+    'gpt2' :['/root/program/embedding/bert_pretrained_model/gpt2/gpt2-base','/root/program/embedding/bert_pretrained_model/gpt2/gpt2_{}'.format(data_args.task_name)]
+    }
 
     if (
         os.path.exists(training_args.output_dir)
