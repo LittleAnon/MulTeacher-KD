@@ -184,6 +184,10 @@ def main():
         model_args.model_name_or_path, training_args.output_dir = cache_dict[
             model_args.cache_model_type]
 
+    # 设置一下最多保存的checkpoint
+    training_args.save_total_limit = 2
+    training_args.save_steps = 1000
+
     if (
         os.path.exists(training_args.output_dir)
         and os.listdir(training_args.output_dir)
