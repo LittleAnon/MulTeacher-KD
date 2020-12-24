@@ -26,13 +26,7 @@ def get_parser(name):
     return parser
 
 
-teacher_model_dict = {
-    'roberta': '/root/program/embedding/bert_pretrained_model/roberta/robert_mrpc',
-    'gpt2': '/root/program/embedding/bert_pretrained_model/gpt2/gpt2_mrpc',
-            'bert': '/root/program/embedding/bert_pretrained_model/bert/bert_mrpc',
-            'rAg': ['/root/program/embedding/bert_pretrained_model/roberta/robert_mrpc', '/root/program/embedding/bert_pretrained_model/gpt2/gpt2_mrpc']
 
-}
 
 
 def parse_gpus(gpus):
@@ -348,6 +342,14 @@ class AugmentConfig(BaseConfig):
         parser = self.build_parser()
         args = parser.parse_args()
         super().__init__(**vars(args))
+
+        teacher_model_dict = {
+            'roberta': '/root/program/embedding/bert_pretrained_model/roberta/robert_{}'.format(self.name),
+            'gpt2': '/root/program/embedding/bert_pretrained_model/gpt2/gpt2_{}'.format(self.name),
+                    'bert': '/root/program/embedding/bert_pretrained_model/bert/bert_{}'.format(self.name),
+                    'rAg': ['/root/program/embedding/bert_pretrained_model/roberta/robert_{}'.format(self.name), '/root/program/embedding/bert_pretrained_model/gpt2/gpt2_{}'.format(self.name)]
+
+        }
 
         self.teacher_model = teacher_model_dict[self.teacher_type]
 
