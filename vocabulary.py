@@ -7,6 +7,7 @@
 import numpy as np
 from pathlib import Path
 
+
 class Vocabulary:
     def __init__(self,
                  counter_or_filename=None,
@@ -62,7 +63,7 @@ class Vocabulary:
         special_vocab = [self.pad_token, self.unk_token,
                          self.bos_token, self.eos_token, self.sep_token, self.mask_token] + self.other_tokens
         self._special_vocab = list(filter(None, special_vocab))
-        
+
         if counter_or_filename:
             if isinstance(counter_or_filename, str) or isinstance(counter_or_filename, Path):
                 self.load(counter_or_filename, **kwargs)
@@ -89,7 +90,8 @@ class Vocabulary:
             for word in self._vocab:
                 if save_special_token or (word not in self._special_vocab):
                     if frequence:
-                        file.write(word + sep + str(self._frequence_map[word]) + '\n')
+                        file.write(
+                            word + sep + str(self._frequence_map[word]) + '\n')
                     else:
                         file.write(word + '\n')
 
@@ -162,7 +164,8 @@ class Vocabulary:
         if isinstance(counter, list):
             self._vocab = counter
         else:
-            self._vocab = [k for k, v in counter.most_common() if k in self._special_vocab or v >= min_count]
+            self._vocab = [k for k, v in counter.most_common(
+            ) if k in self._special_vocab or v >= min_count]
 
         if add_special_token:
             self._vocab = self._special_vocab + self._vocab
@@ -224,8 +227,6 @@ class Vocabulary:
             new_setence[-1] = self.eos_token
         return new_setence
 
-
-
     def sent2seq(self, sentence, max_length=-1, bos=False, eos=False, pad_last=True, trunc_last=True, return_list=False):
         """
         convert a sentence to a list of index
@@ -245,9 +246,10 @@ class Vocabulary:
         ------------
             seq: a list of index
         """
-        new_setence = self._sent_add_special(sentence, max_length, bos, eos, pad_last, trunc_last)
+        new_setence = self._sent_add_special(
+            sentence, max_length, bos, eos, pad_last, trunc_last)
         seq = [self.word2index(word) for word in new_setence]
-        
+
         if return_list:
             return seq
         return np.array(seq)
@@ -271,11 +273,12 @@ class Vocabulary:
         ------------
             seq: a list of index
         """
-        new_setence = self._sent_add_special(sentence, max_length, bos, eos, pad_last, trunc_last)
-        
+        new_setence = self._sent_add_special(
+            sentence, max_length, bos, eos, pad_last, trunc_last)
+
         seq = np.array([self.word2index(word) for word in new_setence])
         matrix = None
-        
+
         if char_vocab is not None:
             length = len(new_setence)
             matrix = np.zeros([length, max_char_length], dtype=np.int32)
@@ -283,7 +286,8 @@ class Vocabulary:
             for i, word in enumerate(new_setence):
                 if word in self.special_vocab:
                     continue
-                char_seq = char_vocab.sent2seq(list(word), max_length=max_char_length)
+                char_seq = char_vocab.sent2seq(
+                    list(word), max_length=max_char_length)
                 matrix[i] = char_seq
 
         return seq, matrix
@@ -347,7 +351,7 @@ class Vocabulary:
                 else:
                     self._frequence_map[word] = 0
         return self
-    
+
     def difference(self, other):
         """
         add other vocabulary to this vocabulary.

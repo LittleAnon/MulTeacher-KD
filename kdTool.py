@@ -9,6 +9,7 @@ def softmax(x):
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum(axis=0)  # only difference
 
+
 def replace_masked(tensor, mask, value):
     reverse_mask = 1.0 - mask
     values_to_add = value * reverse_mask
@@ -33,9 +34,12 @@ class Emd_Evaluator():
             self.s_att_weight = np.zeros(stu_layer_num)
             self.t_att_weight = np.zeros(tea_layer_num)
         # self.conv = nn.Conv1d(768, 768, 1).to(device)
+
     def init_weight(self):
-        self.s_weight = np.ones(self.s_layer_num) / self.s_layer_num * self.weight_rate
-        self.t_weight = np.ones(self.t_layer_num) / self.t_layer_num * self.weight_rate
+        self.s_weight = np.ones(self.s_layer_num) / \
+            self.s_layer_num * self.weight_rate
+        self.t_weight = np.ones(self.t_layer_num) / \
+            self.t_layer_num * self.weight_rate
 
     def assert_length(self, student_reps, teacher_reps):
         if len(student_reps) != self.s_weight:
@@ -55,12 +59,16 @@ class Emd_Evaluator():
             student_rep = student_reps[i]
             for j in range(self.t_layer_num):
                 teacher_rep = teacher_reps[j + 1]
-                tmp_loss = self.d_method(student_rep, teacher_rep) # + torch.sum(torch.abs(student_rep - teacher_rep))
-                self.distance_matrix[i][j + self.s_layer_num] = self.distance_matrix[j + self.s_layer_num][i] = tmp_loss
+                # + torch.sum(torch.abs(student_rep - teacher_rep))
+                tmp_loss = self.d_method(student_rep, teacher_rep)
+                self.distance_matrix[i][j + self.s_layer_num] = self.distance_matrix[j +
+                                                                                     self.s_layer_num][i] = tmp_loss
 
     def loss(self, student_reps, teacher_reps, return_distance=False):
-        _s_weight = np.concatenate((self.s_weight, np.zeros_like(self.t_weight)))
-        _t_weight = np.concatenate((np.zeros_like(self.s_weight), self.t_weight))
+        _s_weight = np.concatenate(
+            (self.s_weight, np.zeros_like(self.t_weight)))
+        _t_weight = np.concatenate(
+            (np.zeros_like(self.s_weight), self.t_weight))
         totol_num = self.s_layer_num + self.t_layer_num
         distance_matrix = torch.zeros([totol_num, totol_num]).to(self.device)
         for i in range(self.s_layer_num):
@@ -68,9 +76,12 @@ class Emd_Evaluator():
             for j in range(self.t_layer_num):
                 teacher_rep = teacher_reps[j + 1]
                 tmp_loss = self.d_method(student_rep, teacher_rep)
-                distance_matrix[i][j + self.s_layer_num] = distance_matrix[j + self.s_layer_num][i] = tmp_loss
-        _, trans_matrix = emd_with_flow(_s_weight, _t_weight, distance_matrix.detach().cpu().numpy().astype('float64'))
-        d = torch.sum(torch.tensor(trans_matrix).to(self.device) * distance_matrix)
+                distance_matrix[i][j + self.s_layer_num] = distance_matrix[j +
+                                                                           self.s_layer_num][i] = tmp_loss
+        _, trans_matrix = emd_with_flow(
+            _s_weight, _t_weight, distance_matrix.detach().cpu().numpy().astype('float64'))
+        d = torch.sum(torch.tensor(trans_matrix).to(
+            self.device) * distance_matrix)
         if return_distance:
             return d, trans_matrix, distance_matrix
         else:
@@ -85,8 +96,10 @@ class Emd_Evaluator():
                 student_atts = [torch.mean(x, dim=1) for x in student_atts]
         elif len(student_atts[0].shape) == 4 and len(teacher_atts[0].shape) == 3:
             student_atts = [torch.mean(x, dim=1) for x in student_atts]
-        _s_weight = np.concatenate((self.s_weight, np.zeros_like(self.t_weight)))
-        _t_weight = np.concatenate((np.zeros_like(self.s_weight), self.t_weight))
+        _s_weight = np.concatenate(
+            (self.s_weight, np.zeros_like(self.t_weight)))
+        _t_weight = np.concatenate(
+            (np.zeros_like(self.s_weight), self.t_weight))
         totol_num = self.s_layer_num + self.t_layer_num
         distance_matrix = torch.zeros([totol_num, totol_num]).to(self.device)
         for i in range(self.s_layer_num):
@@ -94,9 +107,12 @@ class Emd_Evaluator():
             for j in range(self.t_layer_num):
                 teacher_att = teacher_atts[j]
                 tmp_loss = self.d_method(student_att, teacher_att)
-                distance_matrix[i][j + self.s_layer_num] = distance_matrix[j + self.s_layer_num][i] = tmp_loss
-        _, trans_matrix = emd_with_flow(_s_weight, _t_weight, distance_matrix.detach().cpu().numpy().astype('float64'))
-        d = torch.sum(torch.tensor(trans_matrix).to(self.device) * distance_matrix)
+                distance_matrix[i][j + self.s_layer_num] = distance_matrix[j +
+                                                                           self.s_layer_num][i] = tmp_loss
+        _, trans_matrix = emd_with_flow(
+            _s_weight, _t_weight, distance_matrix.detach().cpu().numpy().astype('float64'))
+        d = torch.sum(torch.tensor(trans_matrix).to(
+            self.device) * distance_matrix)
         if return_distance:
             return d, trans_matrix, distance_matrix
         else:
@@ -106,14 +122,19 @@ class Emd_Evaluator():
         distance_matrix = distance_matrix.detach().cpu().numpy().astype('float64')
 
         trans = np.sum(trans_matrix * distance_matrix, -1)[:self.s_layer_num]
-        tmp_s = np.divide(trans, self.s_weight, out=np.zeros_like(trans), where=self.s_weight != 0)
+        tmp_s = np.divide(trans, self.s_weight, out=np.zeros_like(
+            trans), where=self.s_weight != 0)
         weight_sum = np.ones_like(trans) * np.sum(tmp_s)
-        self.s_weight = np.divide(weight_sum, tmp_s, out=np.zeros_like(weight_sum), where=tmp_s != 0)
+        self.s_weight = np.divide(
+            weight_sum, tmp_s, out=np.zeros_like(weight_sum), where=tmp_s != 0)
 
-        trans = np.sum(np.transpose(trans_matrix) * distance_matrix, -1)[self.s_layer_num:]
-        tmp_t = np.divide(trans, self.t_weight, out=np.zeros_like(trans), where=self.t_weight != 0)
+        trans = np.sum(np.transpose(trans_matrix) *
+                       distance_matrix, -1)[self.s_layer_num:]
+        tmp_t = np.divide(trans, self.t_weight, out=np.zeros_like(
+            trans), where=self.t_weight != 0)
         weight_sum = np.ones_like(trans) * np.sum(tmp_t)
-        self.t_weight = np.divide(weight_sum, tmp_t, out=np.zeros_like(weight_sum), where=tmp_t != 0)
+        self.t_weight = np.divide(
+            weight_sum, tmp_t, out=np.zeros_like(weight_sum), where=tmp_t != 0)
         self.s_weight = self.s_weight / np.sum(self.s_weight)
         self.t_weight = self.t_weight / np.sum(self.t_weight)
         if self.add_softmax:
@@ -130,8 +151,10 @@ def distillation_loss(y, labels, teacher_scores, output_mode, T=1, alpha=0.5, re
         if teacher_scores is not None:
             student_likelihood = torch.nn.functional.log_softmax(y / T, dim=-1)
             # student_likelihood = torch.nn.functional.softmax(y / T, dim=-1)
-            targets_prob = torch.nn.functional.softmax(teacher_scores / T, dim=-1)
-            d_loss = ( - targets_prob * student_likelihood).mean() * T * T / reduce_T
+            targets_prob = torch.nn.functional.softmax(
+                teacher_scores / T, dim=-1)
+            d_loss = (- targets_prob * student_likelihood).mean() * \
+                T * T / reduce_T
         else:
             d_loss = 0.0
         crit = nn.CrossEntropyLoss()
@@ -144,7 +167,8 @@ def distillation_loss(y, labels, teacher_scores, output_mode, T=1, alpha=0.5, re
             d_loss = 0.0
         nll_loss = loss_mse(y.view(-1), labels.view(-1))
     else:
-        raise ValueError("output_mode must in \"classification\", \"regression\"")
+        raise ValueError(
+            "output_mode must in \"classification\", \"regression\"")
     tol_loss = alpha * d_loss + (1.0 - alpha) * nll_loss
     return tol_loss, d_loss, nll_loss
 

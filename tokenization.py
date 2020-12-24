@@ -100,8 +100,8 @@ class BertTokenizer(object):
             [(ids, tok) for tok, ids in self.vocab.items()])
         self.do_basic_tokenize = do_basic_tokenize
         if do_basic_tokenize:
-          self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case,
-                                                never_split=never_split)
+            self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case,
+                                                  never_split=never_split)
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab)
         self.max_len = max_len if max_len is not None else int(1e12)
         self.basic_only = basic_only
@@ -128,7 +128,8 @@ class BertTokenizer(object):
             logger.warning(
                 "Token indices sequence length is longer than the specified maximum "
                 " sequence length for this BERT model ({} > {}). Running this"
-                " sequence through BERT will result in indexing errors".format(len(ids), self.max_len)
+                " sequence through BERT will result in indexing errors".format(
+                    len(ids), self.max_len)
             )
         return ids
 
@@ -162,7 +163,8 @@ class BertTokenizer(object):
         """
 
         # assert pretrained_model_name_or_path in PRETRAINED_VOCAB_ARCHIVE_MAP
-        resolved_vocab_file = os.path.join(pretrained_model_name_or_path, 'vocab.txt')
+        resolved_vocab_file = os.path.join(
+            pretrained_model_name_or_path, 'vocab.txt')
 
         max_len = 512
         kwargs['max_len'] = min(kwargs.get('max_len', int(1e12)), max_len)

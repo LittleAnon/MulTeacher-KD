@@ -1,5 +1,6 @@
-#coding=utf-8
+# coding=utf-8
 """ Training augmented model """
+from transformers import RobertaForSequenceClassification, GPT2ForSequenceClassification
 import os
 from math import sqrt
 
@@ -19,25 +20,28 @@ acc_tasks = ["mnli", "mrpc", "sst-2", "qqp", "qnli", "rte", "books"]
 corr_tasks = ["sts-b"]
 mcc_tasks = ["cola"]
 os.environ['CUDA_VISIBLE_DEVICES'] = '3'
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-from transformers import RobertaForSequenceClassification, GPT2ForSequenceClassification
+device = torch.device(
+    "cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
 def convert_to_attn(hidns, mask):
     if type(hidns[0]) is not tuple:
         hdim = hidns[0].shape[-1]
-        attns = [torch.matmul(x, x.transpose(2, 1)) / sqrt(hdim) for x in hidns]
+        attns = [torch.matmul(x, x.transpose(2, 1)) / sqrt(hdim)
+                 for x in hidns]
         mask = mask.unsqueeze(1)
         mask = (1.0 - mask) * -10000.0
         attns = [torch.nn.functional.softmax(x + mask, dim=-1) for x in attns]
     else:
         hidns = [torch.stack(x, dim=1) for x in hidns]
         hdim = hidns[0][0].shape[-1]
-        attns = [torch.matmul(x, x.transpose(-1, -2)) / sqrt(hdim) for x in hidns]
+        attns = [torch.matmul(x, x.transpose(-1, -2)) /
+                 sqrt(hdim) for x in hidns]
         mask = mask.unsqueeze(1).unsqueeze(2)
         mask = (1.0 - mask) * -10000.0
         attns = [torch.nn.functional.softmax(x + mask, dim=-1) for x in attns]
     return attns
+
 
 def main():
     config = AugmentConfig()
@@ -46,7 +50,7 @@ def main():
     logger = FileLogger('./log', config.is_master, config.is_master)
 
     use_emd = config.use_emd
-    
+
     # set seed
     np.random.seed(config.seed)
     torch.manual_seed(config.seed)
@@ -54,11 +58,10 @@ def main():
 
     torch.backends.cudnn.benchmark = True
 
-
-
     ############# LOADING DATA /START ###############
     task_name = config.datasets
-    train_dataloader, _, eval_dataloader, output_mode, n_classes, config = utils.load_glue_dataset(config)
+    train_dataloader, _, eval_dataloader, output_mode, n_classes, config = utils.load_glue_dataset(
+        config)
     logger.info(f"train_loader length {len(train_dataloader)}")
 
     ############# LOADING DATA /END ###############
@@ -71,20 +74,19 @@ def main():
         pre_d[k] = torch.sum(v)
     if config.teacher_type == 'gpt2':
         utils.load_gpt2_embedding_weight(model,
-                                    config.teacher_model)
+                                         config.teacher_model)
     elif config.teacher_type == 'bert':
         utils.load_bert_embedding_weight(model,
-                                    config.teacher_model)
+                                         config.teacher_model)
     elif config.teacher_type == 'roberta':
         utils.load_roberta_embedding_weight(model,
-                                         config.teacher_model)
+                                            config.teacher_model)
     elif config.teacher_type == 'rAg':
-        utils.load_roberta_embedding_weight(model,config.teacher_model[0])
-
+        utils.load_roberta_embedding_weight(model, config.teacher_model[0])
 
     for k, v in model.named_parameters():
         new_d[k] = torch.sum(v)
-        
+
     logger.info("=" * 10 + "alter" + "=" * 10)
     for k in pre_d.keys():
         if pre_d[k] != new_d[k]:
@@ -101,13 +103,17 @@ def main():
     else:
 
         if config.teacher_type == 'gpt2':
-            teacher_model = GPT2ForSequenceClassification.from_pretrained(config.teacher_model, num_labels=n_classes)
+            teacher_model = GPT2ForSequenceClassification.from_pretrained(
+                config.teacher_model, num_labels=n_classes)
         elif config.teacher_type == 'bert':
-            teacher_model = TinyBertForSequenceClassification.from_pretrained(config.teacher_model,num_labels=n_classes)
+            teacher_model = TinyBertForSequenceClassification.from_pretrained(
+                config.teacher_model, num_labels=n_classes)
         elif config.teacher_type == 'roberta':
-            teacher_model = RobertaForSequenceClassification.from_pretrained(config.teacher_model)
+            teacher_model = RobertaForSequenceClassification.from_pretrained(
+                config.teacher_model)
         if config.teacher_type == 'rAg':
-            teacher_model = [RobertaForSequenceClassification.from_pretrained(config.teacher_model[0]),GPT2ForSequenceClassification.from_pretrained(config.teacher_model[1], num_labels=n_classes)]
+            teacher_model = [RobertaForSequenceClassification.from_pretrained(
+                config.teacher_model[0]), GPT2ForSequenceClassification.from_pretrained(config.teacher_model[1], num_labels=n_classes)]
             teacher_model[0] = teacher_model[0].to(device)
             teacher_model[0].eval()
             teacher_model[1] = teacher_model[1].to(device)
@@ -124,7 +130,8 @@ def main():
     optimizer = torch.optim.SGD(
         model.parameters(), config.lr, momentum=config.momentum, weight_decay=config.weight_decay)
 
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, config.epochs/2, eta_min=config.lr_min)
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, config.epochs/2, eta_min=config.lr_min)
     torch.autograd.set_detect_anomaly(True)
     best_top1 = 0
 
@@ -137,17 +144,19 @@ def main():
         model.drop_path_prob(drop_prob)
 
         # training
-        train(logger, config, train_dataloader, model, teacher_model, optimizer, epoch, task_name.lower(), emd_tool=emd_tool)
+        train(logger, config, train_dataloader, model, teacher_model,
+              optimizer, epoch, task_name.lower(), emd_tool=emd_tool)
 
         lr_scheduler.step()
         # validation
         if config.teacher_type == 'rAg':
             cur_step = (epoch + 1) * len(train_dataloader[0])
-            top1 = validate(logger, config, eval_dataloader[0], model, epoch, cur_step, task_name.lower(), "val")
+            top1 = validate(
+                logger, config, eval_dataloader[0], model, epoch, cur_step, task_name.lower(), "val")
         else:
             cur_step = (epoch + 1) * len(train_dataloader)
-            top1 = validate(logger, config, eval_dataloader, model, epoch, cur_step, task_name.lower(), "val")
-
+            top1 = validate(logger, config, eval_dataloader,
+                            model, epoch, cur_step, task_name.lower(), "val")
 
         # top1 = validate(test_loader, model, criterion, epoch, cur_step, "test", len(task_types))
         # save
@@ -189,7 +198,6 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
     if config.teacher_type == 'rAg':
         loader_data_plus = [i for i in train_loader[0]]
 
-
     for step in range(loader_data.__len__()):
         data = [x.to("cuda", non_blocking=True) for x in loader_data[step]]
 
@@ -201,7 +209,8 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
         N = X[0].size(0)
 
         optimizer.zero_grad()
-        logits = model(X)  #[32,2] , [[32,128,768],[32,128,768],[32,128,768],[32,128,768]]
+        # [32,2] , [[32,128,768],[32,128,768],[32,128,768],[32,128,768]]
+        logits = model(X)
         if config.use_emd:
             logits, s_layer_out = logits
         if config.use_kd:
@@ -211,22 +220,27 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
             #     mask_check = input_mask.cpu() #[32,128]
 
             if config.teacher_type == 'roberta' or config.teacher_type == 'gpt2':
-                output_dict = teacher_model(input_ids, attention_mask=input_mask, output_hidden_states=True,return_dict=True)
+                output_dict = teacher_model(
+                    input_ids, attention_mask=input_mask, output_hidden_states=True, return_dict=True)
 
-                teacher_logits, teacher_reps = output_dict.logits,output_dict.hidden_states
+                teacher_logits, teacher_reps = output_dict.logits, output_dict.hidden_states
             elif config.teacher_type == 'bert':
-                teacher_logits, teacher_reps = teacher_model(input_ids, segment_ids, input_mask)
+                teacher_logits, teacher_reps = teacher_model(
+                    input_ids, segment_ids, input_mask)
 
             elif config.teacher_type == 'rAg':
-                output_dict_r = teacher_model[0](input_ids, attention_mask=input_mask, output_hidden_states=True,return_dict=True)
+                output_dict_r = teacher_model[0](
+                    input_ids, attention_mask=input_mask, output_hidden_states=True, return_dict=True)
                 teacher_logits_r = output_dict_r.logits
-                teacher_reps_r =  output_dict_r.hidden_states
+                teacher_reps_r = output_dict_r.hidden_states
 
-                data_plus = [x.to("cuda", non_blocking=True) for x in loader_data_plus[step]]
+                data_plus = [x.to("cuda", non_blocking=True)
+                             for x in loader_data_plus[step]]
                 input_ids_p, input_mask_p, segment_ids_p, label_ids_p, seq_lengths_p = data_plus
-                output_dict_g = teacher_model[1](input_ids_p, attention_mask=input_mask_p, output_hidden_states=True,return_dict=True)
+                output_dict_g = teacher_model[1](
+                    input_ids_p, attention_mask=input_mask_p, output_hidden_states=True, return_dict=True)
                 teacher_logits_g = output_dict_g.logits
-                teacher_reps_g =  output_dict_g.hidden_states
+                teacher_reps_g = output_dict_g.hidden_states
                 teacher_logits = torch.add(teacher_logits_r, teacher_logits_g)
                 teacher_logits = teacher_logits / 2
                 teacher_reps = teacher_reps_r + teacher_reps_g
@@ -234,13 +248,15 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
             # print(np.argmax(teacher_logits.detach().cpu().numpy(),axis=1))
             # print(label_ids.cpu().numpy())
             # print("#####################################################")
-            kd_loss, _, _ = distillation_loss(logits, y, teacher_logits, model.output_mode, alpha=config.kd_alpha)
+            kd_loss, _, _ = distillation_loss(
+                logits, y, teacher_logits, model.output_mode, alpha=config.kd_alpha)
             rep_loss = 0
             if config.use_emd:
                 if config.hidn2attn:
                     s_layer_out = convert_to_attn(s_layer_out, input_mask)
                     teacher_reps = convert_to_attn(teacher_reps, input_mask)
-                rep_loss, flow, distance = emd_tool.loss(s_layer_out, teacher_reps, return_distance=True)
+                rep_loss, flow, distance = emd_tool.loss(
+                    s_layer_out, teacher_reps, return_distance=True)
                 if config.update_emd:
                     emd_tool.update_weight(flow, distance)
             # loss = kd_loss * config.emd_only + rep_loss * config.emd_rate
@@ -276,6 +292,7 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
                 .format(epoch + 1, config.epochs, step, total_num_step - 1, losses.avg, top1=train_acc))
         cur_step += 1
 
+
 def validate(logger, config, data_loader, model, epoch, cur_step, task_name, mode="dev"):
     top1 = utils.AverageMeter()
     losses = utils.AverageMeter()
@@ -304,7 +321,8 @@ def validate(logger, config, data_loader, model, epoch, cur_step, task_name, mod
             if len(preds) == 0:
                 preds.append(logits.detach().cpu().numpy())
             else:
-                preds[0] = np.append(preds[0], logits.detach().cpu().numpy(), axis=0)
+                preds[0] = np.append(
+                    preds[0], logits.detach().cpu().numpy(), axis=0)
             eval_labels.extend(y.detach().cpu().numpy())
 
         preds = preds[0]
@@ -323,7 +341,8 @@ def validate(logger, config, data_loader, model, epoch, cur_step, task_name, mod
         elif task_name == "sts-b":
             acc = result['corr']
 
-    logger.info(mode + ": [{:2d}/{}] Final Prec@1 {:.4%}".format(epoch + 1, config.epochs, acc))
+    logger.info(
+        mode + ": [{:2d}/{}] Final Prec@1 {:.4%}".format(epoch + 1, config.epochs, acc))
     return acc
 
 

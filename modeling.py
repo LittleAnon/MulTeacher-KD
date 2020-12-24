@@ -691,7 +691,8 @@ class BertPreTrainedModel(nn.Module):
 
         model = cls(config, *inputs, **kwargs)
         if state_dict is None and not from_tf:
-            weights_path = os.path.join(pretrained_model_name_or_path, WEIGHTS_NAME)
+            weights_path = os.path.join(
+                pretrained_model_name_or_path, WEIGHTS_NAME)
             if not os.path.exists(weights_path) and os.path.isdir(pretrained_model_name_or_path):
                 weights_dir_files = os.listdir(pretrained_model_name_or_path)
                 latest_step = ""
@@ -704,7 +705,8 @@ class BertPreTrainedModel(nn.Module):
                             if latest_step_point < current_step:
                                 latest_step_point = current_step
                                 latest_step = weights_path_tmp
-                weights_path = os.path.join(pretrained_model_name_or_path, latest_step)
+                weights_path = os.path.join(
+                    pretrained_model_name_or_path, latest_step)
 
             logger.info("Loading model {}".format(weights_path))
             state_dict = torch.load(weights_path, map_location='cpu')
@@ -1146,10 +1148,13 @@ class BertForSentencePairClassification(BertPreTrainedModel):
 #         x = torch.addmm(self.bias, x.view(-1, x.size(-1)), self.weight)
 #         x = x.view(*size_out)
 #         return x
+
+
 def replace_masked(tensor, mask, value):
     reverse_mask = 1.0 - mask
     values_to_add = value * reverse_mask
     return tensor * mask + values_to_add
+
 
 class TinyBertForSequenceClassification(BertPreTrainedModel):
     def __init__(self, config, num_labels, fit_size=768):
@@ -1162,16 +1167,15 @@ class TinyBertForSequenceClassification(BertPreTrainedModel):
         self.classifier = nn.Linear(config.hidden_size, num_labels)
         self.apply(self.init_bert_weights)
 
-    def forward(self, input_ids,  token_type_ids,attention_mask, hidden_out=True, attention_out=False):
+    def forward(self, input_ids,  token_type_ids, attention_mask, hidden_out=True, attention_out=False):
 
         sequence_output = self.bert(input_ids, token_type_ids, attention_mask,
-                                                               output_all_encoded_layers=True, output_att=attention_out)
+                                    output_all_encoded_layers=True, output_att=attention_out)
         if attention_out:
             sequence_output, attns, pooled_output = sequence_output
         else:
             sequence_output, pooled_output = sequence_output
         logits = self.classifier(torch.relu(pooled_output))
-
 
         if not hidden_out:
             return logits
@@ -1222,6 +1226,7 @@ class TinyBertForSequenceClassification(BertPreTrainedModel):
 #
 #         return outputs  # (loss), logits, (hidden_states), (attentions)
 
+
 class GPT2ForSequenceClassification(GPT2PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
@@ -1231,10 +1236,11 @@ class GPT2ForSequenceClassification(GPT2PreTrainedModel):
         self.dropout = nn.Dropout(0.1)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
 
-
         self.init_weights()
+
     def set_type(self, classification_type):
         self.classification_type = classification_type
+
     def forward(
             self, input_ids=None, attention_mask=None, token_type_ids=None,
             position_ids=None, head_mask=None, inputs_embeds=None, labels=None
@@ -1247,12 +1253,12 @@ class GPT2ForSequenceClassification(GPT2PreTrainedModel):
             If :obj:`config.num_labels > 1` a classification loss is computed (Cross-Entropy).
         """
         outputs = self.gpt2(
-            input_ids,output_hidden_states=True
+            input_ids, output_hidden_states=True
         )
         if self.classification_type == "last":
-            pooled_output = outputs[0][:,-1,:] #[32,128,768]
+            pooled_output = outputs[0][:, -1, :]  # [32,128,768]
         elif self.classification_type == "first":
-            pooled_output = outputs[0][:,0,:]
+            pooled_output = outputs[0][:, 0, :]
         elif self.classification_type == "mean":
             pooled_output = torch.mean(outputs[0], dim=1)
         elif self.classification_type == "max":
@@ -1261,8 +1267,9 @@ class GPT2ForSequenceClassification(GPT2PreTrainedModel):
             pooled_output = torch.min(outputs[0], dim=1)[0]
         elif self.classification_type == "sum":
             pooled_output = torch.sum(outputs[0], dim=1)
-        pooled_output = self.dropout(pooled_output)#[32,768]
-        logits = self.classifier(pooled_output)# classifier in_768 out_2  pooled_out [32,768]
+        pooled_output = self.dropout(pooled_output)  # [32,768]
+        # classifier in_768 out_2  pooled_out [32,768]
+        logits = self.classifier(pooled_output)
 
         loss = None
         if labels is not None:
@@ -1272,11 +1279,11 @@ class GPT2ForSequenceClassification(GPT2PreTrainedModel):
                 loss = loss_fct(logits.view(-1), labels.view(-1))
             else:
                 loss_fct = CrossEntropyLoss()
-                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+                loss = loss_fct(
+                    logits.view(-1, self.num_labels), labels.view(-1))
 
         output = (logits,)
         if loss is not None:
-            return ((loss,) + output),outputs[2]
+            return ((loss,) + output), outputs[2]
         # return ((loss,) + output) if loss is not None else output,gpt2
-        return logits,outputs[2]
-
+        return logits, outputs[2]

@@ -1,5 +1,6 @@
-#coding=utf-8
+# coding=utf-8
 """ Utilities """
+from torch.utils.data.sampler import Sampler
 import logging
 import os
 import random
@@ -30,7 +31,7 @@ DATASET_TYPE = {
     'wnli': 2
 }
 LOSS_TYPE = {'sts-b': 2}
-NUM_LABLE = {'sts-b': 1, 'SST-2':2}
+NUM_LABLE = {'sts-b': 1, 'SST-2': 2}
 
 
 def random_search(n_nodes, n_opts, remove_none=True):
@@ -61,11 +62,14 @@ def choice2alpha(choice, n_nodes, n_ops):
 
 def get_data(path, datasets):
     nums = DATASET_TYPE.get(datasets, 1)
-    train_dataset = OneInputDataset(path + '/' + datasets + "/train.npz", 0, nums,)
-    valid_dataset = OneInputDataset(path + '/' + datasets + "/dev.npz", 0, nums,)
+    train_dataset = OneInputDataset(
+        path + '/' + datasets + "/train.npz", 0, nums,)
+    valid_dataset = OneInputDataset(
+        path + '/' + datasets + "/dev.npz", 0, nums,)
     test_dataset = None
     if os.path.exists(path + '/' + datasets + "/test.npz"):
-        test_dataset = OneInputDataset(path + '/' + datasets + "/test.npz", 0, nums, )
+        test_dataset = OneInputDataset(
+            path + '/' + datasets + "/test.npz", 0, nums, )
     return train_dataset, valid_dataset, test_dataset
 
 
@@ -206,8 +210,7 @@ class InputFeatures(object):
         self.label_id = label_id
 
 
-
-def convert_examples_to_features_v2(examples, label_list, max_seq_length, tokenizer, output_mode, is_master=True, gpt2=False,tok_type = None):
+def convert_examples_to_features_v2(examples, label_list, max_seq_length, tokenizer, output_mode, is_master=True, gpt2=False, tok_type=None):
     label_map = {label: i for i, label in enumerate(label_list)}
 
     if tok_type == 'bert':
@@ -224,9 +227,11 @@ def convert_examples_to_features_v2(examples, label_list, max_seq_length, tokeni
         if ex_index % 10000 == 0 and is_master:
             print("Writing example %d of %d" % (ex_index, len(examples)))
         args = (
-            (example.text_a,) if example.text_b is None else (examples.text_a + examples.text_b,)
+            (example.text_a,) if example.text_b is None else (
+                examples.text_a + examples.text_b,)
         )
-        result = tokenizer(*args, padding='max_length', max_length=max_seq_length, truncation=True)
+        result = tokenizer(*args, padding='max_length',
+                           max_length=max_seq_length, truncation=True)
 
         if output_mode == "classification":
             label_id = label_map[example.label]
@@ -255,12 +260,12 @@ def convert_examples_to_features_v2(examples, label_list, max_seq_length, tokeni
     return features
 
 
-def convert_examples_to_features(examples, label_list, max_seq_length, tokenizers, output_mode, is_master=True, tok_type = None):
+def convert_examples_to_features(examples, label_list, max_seq_length, tokenizers, output_mode, is_master=True, tok_type=None):
     """Loads a data file into a list of `InputBatch`s."""
 
     label_map = {label: i for i, label in enumerate(label_list)}
 
-    features = [[],[]]
+    features = [[], []]
     if tok_type is 'rAg':
         tok_type_list = ['roberta', 'gpt2']
     else:
@@ -286,7 +291,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
                 else:
                     if len(tokens_a) > max_seq_length - 2:
                         tokens_a = tokens_a[:(max_seq_length - 2)]
-            ## 和finetune的数据格式保持一致，bert和gpt2和roberta的特殊字符添加格式还不太一样
+            # 和finetune的数据格式保持一致，bert和gpt2和roberta的特殊字符添加格式还不太一样
             if tok_type == 'bert':
                 cls_ = tokenizer.cls_token
                 sep_ = tokenizer.sep_token
@@ -335,10 +340,13 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
             if ex_index == 0 and is_master:
                 print("*** Example for %s ***" % (tok_type))
                 print("guid: %s" % (example.guid))
-                print("tokens: %s" % " ".join([str(x) for x in tokens]).encode('utf-8'))
+                print("tokens: %s" % " ".join([str(x)
+                                               for x in tokens]).encode('utf-8'))
                 print("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-                print("input_mask: %s" % " ".join([str(x) for x in input_mask]))
-                print("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
+                print("input_mask: %s" % " ".join(
+                    [str(x) for x in input_mask]))
+                print("segment_ids: %s" % " ".join(
+                    [str(x) for x in segment_ids]))
                 print("label: {}".format(example.label))
                 print("label_id: {}".format(label_id))
 
@@ -370,7 +378,7 @@ def convert_examples_to_features_new(examples, label_list, max_seq_length, token
 
             if len(tokens_a) > max_seq_length - 2:
                 tokens_a = tokens_a[:(max_seq_length - 2)]
-    
+
             segment_ids = [0] * len(tokens)
 
             input_ids = tokenizer.convert_tokens_to_ids(tokens)
@@ -387,7 +395,7 @@ def convert_examples_to_features_new(examples, label_list, max_seq_length, token
             assert len(segment_ids) == max_seq_length
 
         else:
-            tokens_a = tokenizer.tokenize(example.text_a)            
+            tokens_a = tokenizer.tokenize(example.text_a)
             tokens_b = tokenizer.tokenize(example.text_b)
             tokens_a_cp = tokens_a.copy()
             tokens_b_cp = tokens_a.copy()
@@ -400,7 +408,8 @@ def convert_examples_to_features_new(examples, label_list, max_seq_length, token
 
             tokens_a = ["[CLS]"] + tokens_a + ["[SEP]"]
             tokens_b = ["[CLS]"] + tokens_b + ["[SEP]"]
-            tokens_all = ["[CLS]"] + tokens_a_cp + ["[SEP]"] + tokens_b_cp + ["[SEP]"]
+            tokens_all = ["[CLS]"] + tokens_a_cp + \
+                ["[SEP]"] + tokens_b_cp + ["[SEP]"]
             segment_ids_a = [0] * len(tokens_a)
             segment_ids_b = [0] * len(tokens_b)
             segment_ids = [0] * len(tokens_a) + [1] * (len(tokens_b_cp) + 1)
@@ -470,7 +479,7 @@ def convert_examples_to_features_new(examples, label_list, max_seq_length, token
                 input_mask_all=input_mask_all,
                 segment_ids_all=segment_ids_all,
                 seq_length_all=seq_length_all))
-        
+
     return features
 
 
@@ -490,11 +499,15 @@ def load_gpt2_embedding_weight(model, path, train=False):
     pretrain_dict = torch.load(path + "/pytorch_model.bin")
     new_dict = {}
 
-    new_dict['stem.word_embeddings.weight'] = pretrain_dict['transformer.wte.weight']#torch.Size([50257, 768])
-    new_dict['stem.position_embeddings.weight'] = pretrain_dict['transformer.wpe.weight']#torch.Size([1024, 768])
+    # torch.Size([50257, 768])
+    new_dict['stem.word_embeddings.weight'] = pretrain_dict['transformer.wte.weight']
+    # torch.Size([1024, 768])
+    new_dict['stem.position_embeddings.weight'] = pretrain_dict['transformer.wpe.weight']
 
-    new_dict['stem.LayerNorm.weight'] = pretrain_dict['transformer.h.0.ln_1.weight']#torch.Size([768])
-    new_dict['stem.LayerNorm.bias'] = pretrain_dict['transformer.h.0.ln_1.bias']#torch.Size([768])
+    # torch.Size([768])
+    new_dict['stem.LayerNorm.weight'] = pretrain_dict['transformer.h.0.ln_1.weight']
+    # torch.Size([768])
+    new_dict['stem.LayerNorm.bias'] = pretrain_dict['transformer.h.0.ln_1.bias']
     model.load_state_dict(new_dict, strict=False)
 
 
@@ -519,15 +532,18 @@ def load_bert_embedding_weight(model, path, train=False):
                 new_k = new_k.replace('gamma', 'weight')
                 new_k = new_k.replace('beta', 'bias')
             if train:
-                new_dict[new_k.replace('bert.embeddings', 'net.stem')] = pretrain_dict[key]
+                new_dict[new_k.replace(
+                    'bert.embeddings', 'net.stem')] = pretrain_dict[key]
             else:
-                new_dict[key.replace('bert.embeddings', 'stem')] = pretrain_dict[key]
+                new_dict[key.replace('bert.embeddings', 'stem')
+                         ] = pretrain_dict[key]
     print("="*10 + " RESTORE KEYS" + "="*10)
     for k, v in model.named_parameters():
         if k in new_dict:
             print(k)
 
     model.load_state_dict(new_dict, strict=False)
+
 
 def load_data(config, logger):
     from bert_fineturn.data_processor.glue import glue_processors as processors
@@ -569,7 +585,7 @@ def load_data(config, logger):
     train_eval_sampler = valid_data
     if config.is_master:
         logger.info("number of class for each dataset %s " % n_classes)
-    
+
     if not config.multi_gpu:
         train_sampler = RandomSampler(train_data)
         train_eval_sampler = RandomSampler(valid_data)
@@ -578,11 +594,13 @@ def load_data(config, logger):
         train_eval_sampler = DistributedSampler(valid_data)
     eval_sampler = SequentialSampler(valid_data)
 
-    eval_dataloader = DataLoader(valid_data, sampler=eval_sampler, batch_size=config.batch_size)
-    train_eval_dataloader = DataLoader(valid_data, sampler=train_eval_sampler, batch_size=config.batch_size)
-    train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=config.batch_size)
+    eval_dataloader = DataLoader(
+        valid_data, sampler=eval_sampler, batch_size=config.batch_size)
+    train_eval_dataloader = DataLoader(
+        valid_data, sampler=train_eval_sampler, batch_size=config.batch_size)
+    train_dataloader = DataLoader(
+        train_data, sampler=train_sampler, batch_size=config.batch_size)
     return train_dataloader, train_eval_dataloader, eval_dataloader, (word_mat, char_mat), output_mode, n_classes
-
 
 
 def load_glue_dataset(config):
@@ -596,7 +614,6 @@ def load_glue_dataset(config):
     label_list = processor.get_labels()
     n_classes = len(label_list)
 
-
     if config.teacher_type == 'rAg':
         tokenizer_r = AutoTokenizer.from_pretrained(
             config.tokenizer_name if config.tokenizer_name else config.teacher_model[0],
@@ -608,7 +625,7 @@ def load_glue_dataset(config):
 
             use_fast=config.use_fast_tokenizer
         )
-        tokenizer = [tokenizer_r ,tokenizer_g]
+        tokenizer = [tokenizer_r, tokenizer_g]
     else:
         tokenizer = AutoTokenizer.from_pretrained(
             config.tokenizer_name if config.tokenizer_name else config.teacher_model,
@@ -616,10 +633,11 @@ def load_glue_dataset(config):
             use_fast=config.use_fast_tokenizer
         )
 
-    train_examples = processor.get_train_examples('data/' + config.source + '/' + task_name + '/')
+    train_examples = processor.get_train_examples(
+        'data/' + config.source + '/' + task_name + '/')
     train_features = convert_examples_to_features(train_examples, label_list,
-                                                        config.max_seq_length, tokenizer,
-                                                        output_mode, config.is_master,tok_type=config.teacher_type)
+                                                  config.max_seq_length, tokenizer,
+                                                  output_mode, config.is_master, tok_type=config.teacher_type)
 
     eval_examples = processor.get_dev_examples('data/' + config.source + '/' + task_name +
                                                '/')
@@ -628,14 +646,14 @@ def load_glue_dataset(config):
                                                  output_mode, config.is_master,
                                                  tok_type=config.teacher_type)
 
-
     if config.teacher_type == 'rAg':
         train_dataloader = []
         eval_dataloader = []
         train_eval_dataloader = []
         for i in range(2):
             train_data, _ = get_tensor_data(output_mode, train_features[i])
-            eval_data, eval_labels = get_tensor_data(output_mode, eval_features[i])
+            eval_data, eval_labels = get_tensor_data(
+                output_mode, eval_features[i])
             train_eval_data, _ = get_tensor_data(output_mode, eval_features[i])
             if not config.multi_gpu:
                 train_sampler = RandomSampler(train_data)
@@ -645,10 +663,12 @@ def load_glue_dataset(config):
                 train_eval_sampler = DistributedSampler(train_eval_data)
             eval_sampler = SequentialSampler(eval_data)
 
-            train_dataloader.append(DataLoader(train_data, sampler=train_sampler, batch_size=config.batch_size))
-            eval_dataloader.append(DataLoader(eval_data, sampler=eval_sampler, batch_size=config.batch_size))
+            train_dataloader.append(DataLoader(
+                train_data, sampler=train_sampler, batch_size=config.batch_size))
+            eval_dataloader.append(DataLoader(
+                eval_data, sampler=eval_sampler, batch_size=config.batch_size))
             train_eval_dataloader.append(DataLoader(train_eval_data, sampler=train_eval_sampler,
-                                               batch_size=config.batch_size))
+                                                    batch_size=config.batch_size))
     else:
         train_data, _ = get_tensor_data(output_mode, train_features)
         eval_data, eval_labels = get_tensor_data(output_mode, eval_features)
@@ -661,15 +681,16 @@ def load_glue_dataset(config):
             train_eval_sampler = DistributedSampler(train_eval_data)
         eval_sampler = SequentialSampler(eval_data)
 
-        train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=config.batch_size)
-        eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=config.batch_size)
-        train_eval_dataloader = DataLoader(train_eval_data, sampler=train_eval_sampler, batch_size=config.batch_size)
-
-
-
+        train_dataloader = DataLoader(
+            train_data, sampler=train_sampler, batch_size=config.batch_size)
+        eval_dataloader = DataLoader(
+            eval_data, sampler=eval_sampler, batch_size=config.batch_size)
+        train_eval_dataloader = DataLoader(
+            train_eval_data, sampler=train_eval_sampler, batch_size=config.batch_size)
 
     if config.teacher_type == 'bert':
-        config.bert_config = BertConfig.from_json_file(config.teacher_model + "/config.json")
+        config.bert_config = BertConfig.from_json_file(
+            config.teacher_model + "/config.json")
         config.hidden_size = config.bert_config.hidden_size
     elif config.teacher_type == 'gpt2':
         config.gpt_config = GPT2Config.from_json_file(
@@ -684,24 +705,26 @@ def load_glue_dataset(config):
             config.teacher_model[0] + "/config.json")
         config.gpt_config = GPT2Config.from_json_file(
             config.teacher_model[1] + "/config.json")
-        ##因为是一样的，所以用哪个去填hidden_size无所谓
+        # 因为是一样的，所以用哪个去填hidden_size无所谓
         config.hidden_size = config.roberta_config.hidden_size
 
     return train_dataloader, train_eval_dataloader, eval_dataloader, output_mode, n_classes, config
 
 
-from torch.utils.data.sampler import Sampler
 class OrderdedSampler(Sampler):
     def __init__(self, dataset, order):
         self._dataset = dataset
         self._train_data_list = order
         self._train_data_list
+
     def __len__(self):
         return len(self._dataset)
+
     def __iter__(self):
         random.shuffle(self._train_data_list)
         for index in self._train_data_list:
             yield self._dataset[index]
+
 
 def load_embedding(config, logger):
     data_path = os.path.join(config.data_path, config.saved_dataset)
@@ -727,6 +750,7 @@ def load_embedding(config, logger):
         char_mat = np.array(new_mat)
     return word_mat, char_mat
 
+
 def check_data_vaild(data1, data2):
     # data1, data2 = next(iter(data1)), next(iter(data2))
     def pad_replace(x):
@@ -734,14 +758,15 @@ def check_data_vaild(data1, data2):
         pad_mask = np.array([not(i == '[PAD]' or i == "<pad>") for i in x])
         new_x = x[pad_mask].tolist() + [f'[PAD] * { - sum(pad_mask - 1)}']
         return new_x
+
     def mask_replace(x):
         t = sum(x)
         new_x = f"1 * {t}, 0 * {len(x) - t}"
         return new_x
     with open('/data/lxk/NLP/github/darts-KD/data/MRPC-nas/embedding/vocab.txt') as f:
-        vocab1 = {i:x.strip() for i, x in enumerate(f.readlines())}
+        vocab1 = {i: x.strip() for i, x in enumerate(f.readlines())}
     with open('/data/lxk/NLP/github/darts-KD/teacher_utils/teacher_model/MRPC/vocab.txt') as f:
-        vocab2 = {i:x.strip() for i, x in enumerate(f.readlines())}
+        vocab2 = {i: x.strip() for i, x in enumerate(f.readlines())}
 
     sent_words = torch.split(data1[0], 1, dim=1)
     sent_words = [torch.squeeze(x, dim=1) for x in sent_words]
@@ -754,7 +779,8 @@ def check_data_vaild(data1, data2):
 
     print("SENT1:", pad_replace([vocab1[x.item()] for x in data1[0][0][0]]))
     if data1[0].shape[1] == 2:
-        print("SENT2:", pad_replace([vocab1[x.item()] for x in data1[0][0][1]]))
+        print("SENT2:", pad_replace([vocab1[x.item()]
+                                     for x in data1[0][0][1]]))
 
     print("MASK:", mask_replace(mask[0]))
 
@@ -762,8 +788,8 @@ def check_data_vaild(data1, data2):
 
     input_ids, input_mask, segment_ids, label_ids, seq_lengths = data2
 
-
-    print("TEACHER SENT:", pad_replace([vocab2[x.item()] for x in input_ids[0]]))
+    print("TEACHER SENT:", pad_replace(
+        [vocab2[x.item()] for x in input_ids[0]]))
     print("TEACHER MASK", mask_replace(input_mask[0]))
     print("TEACHER LABEL", label_ids[0].item())
 
@@ -778,44 +804,55 @@ def load_both(config, logger):
     output_mode = output_modes[task_name.lower()]
     label_list = processor.get_labels()
     n_classes = len(label_list)
-    ## BERT
-    tokenizer = BertTokenizer.from_pretrained(config.teacher_model, do_lower_case=True)
+    # BERT
+    tokenizer = BertTokenizer.from_pretrained(
+        config.teacher_model, do_lower_case=True)
 
-    train_examples = processor.get_train_examples(config.data_path + config.source + "/" + task_name + '/')
+    train_examples = processor.get_train_examples(
+        config.data_path + config.source + "/" + task_name + '/')
     train_features = convert_examples_to_features(train_examples, label_list,
-                                                        config.max_seq_length, tokenizer,
-                                                        output_mode, config.is_master)
+                                                  config.max_seq_length, tokenizer,
+                                                  output_mode, config.is_master)
     train_data_bert, _ = get_tensor_data(output_mode, train_features)
-    eval_examples = processor.get_dev_examples(config.data_path + config.source + "/" + task_name + '/')
+    eval_examples = processor.get_dev_examples(
+        config.data_path + config.source + "/" + task_name + '/')
     eval_features = convert_examples_to_features(eval_examples, label_list,
-                                                    config.max_seq_length, tokenizer,
-                                                    output_mode, config.is_master)
-    eval_data_bert, eval_labels_bert = get_tensor_data(output_mode, eval_features)
+                                                 config.max_seq_length, tokenizer,
+                                                 output_mode, config.is_master)
+    eval_data_bert, eval_labels_bert = get_tensor_data(
+        output_mode, eval_features)
     train_eval_data_bert, _ = get_tensor_data(output_mode, eval_features)
 
     train_sampler_bert = SequentialSampler(train_data_bert)
     train_eval_sampler_bert = SequentialSampler(train_eval_data_bert)
     eval_sampler_bert = SequentialSampler(eval_data_bert)
 
-    train_dataloader_bert = DataLoader(train_data_bert, sampler=train_sampler_bert, batch_size=config.batch_size)
-    eval_dataloader_bert = DataLoader(eval_data_bert, sampler=eval_sampler_bert, batch_size=config.batch_size)
-    train_eval_dataloader_bert = DataLoader(train_eval_data_bert, sampler=train_eval_sampler_bert, batch_size=config.batch_size)
+    train_dataloader_bert = DataLoader(
+        train_data_bert, sampler=train_sampler_bert, batch_size=config.batch_size)
+    eval_dataloader_bert = DataLoader(
+        eval_data_bert, sampler=eval_sampler_bert, batch_size=config.batch_size)
+    train_eval_dataloader_bert = DataLoader(
+        train_eval_data_bert, sampler=train_eval_sampler_bert, batch_size=config.batch_size)
 
-    #### GLOVE
+    # GLOVE
     word_mat, char_mat = load_embedding(config, logger)
     # get data with meta
     logger.info("loading dataset {}".format(config.datasets))
     data_path = os.path.join(config.data_path, config.saved_dataset)
-    train_data_glove, valid_data_glove, test_data_glove = get_data(data_path, config.datasets)
+    train_data_glove, valid_data_glove, test_data_glove = get_data(
+        data_path, config.datasets)
     logger.info("number of class for each dataset %s " % n_classes)
 
     train_sampler_glove = SequentialSampler(train_data_glove)
     train_eval_sampler_glove = SequentialSampler(valid_data_glove)
     eval_sampler_glove = SequentialSampler(valid_data_glove)
 
-    train_dataloader_glove = DataLoader(train_data_glove, sampler=train_sampler_glove, batch_size=config.batch_size)
-    eval_dataloader_glove = DataLoader(valid_data_glove, sampler=eval_sampler_glove, batch_size=config.batch_size)
-    train_eval_dataloader_glove = DataLoader(valid_data_glove, sampler=train_eval_sampler_glove, batch_size=config.batch_size)
+    train_dataloader_glove = DataLoader(
+        train_data_glove, sampler=train_sampler_glove, batch_size=config.batch_size)
+    eval_dataloader_glove = DataLoader(
+        valid_data_glove, sampler=eval_sampler_glove, batch_size=config.batch_size)
+    train_eval_dataloader_glove = DataLoader(
+        valid_data_glove, sampler=train_eval_sampler_glove, batch_size=config.batch_size)
     # print("############## TRAIN DATA CHECK ##############")
     # check_data_vaild(train_dataloader_glove, train_dataloader_bert)
     # print("############## VAILD DATA CHECK ##############")
@@ -841,10 +878,12 @@ class Temp_Scheduler(object):
             epoch = self.last_epoch + 1
         self.last_epoch = epoch
         self.total_epochs = 150
-        self.curr_temp = (1 - self.last_epoch / self.total_epochs) * (self.base_temp - self.temp_min) + self.temp_min
+        self.curr_temp = (1 - self.last_epoch / self.total_epochs) * \
+            (self.base_temp - self.temp_min) + self.temp_min
         if self.curr_temp < self.temp_min:
             self.curr_temp = self.temp_min
         return self.curr_temp
+
 
 class RandomSamplerByOrder(Sampler):
     r"""Samples elements randomly. If without replacement, then sample from a shuffled dataset.
@@ -889,13 +928,15 @@ class RandomSamplerByOrder(Sampler):
 
     def __len__(self):
         return self.num_samples
-    
+
+
 def bert_batch_split(data, rank):
     data = [x.to(f"cuda:{rank}", non_blocking=True) for x in data]
     input_ids, input_mask, segment_ids, label_ids, seq_lengths = data
     X = [input_ids, input_mask, segment_ids, seq_lengths]
     Y = label_ids
     return X, Y
+
 
 def get_acc_from_pred(output_mode, task_name, preds, eval_labels):
     if output_mode == "classification":
@@ -913,6 +954,7 @@ def get_acc_from_pred(output_mode, task_name, preds, eval_labels):
     elif task_name.lower() == "sts-b":
         acc = result['corr']
     return result, acc
+
 
 if __name__ == "__main__":
     top1 = AverageMeter()

@@ -53,12 +53,13 @@ def from_choice(choice):
     connections, options = choice
     normal = []
     n_nodes = len(connections)
-    for i,(con,opt) in enumerate(zip(connections,options)):
-        normal.append([(PRIMITIVES[opt],con)])
-    
+    for i, (con, opt) in enumerate(zip(connections, options)):
+        normal.append([(PRIMITIVES[opt], con)])
+
     concat = range(1, 1+n_nodes)
     return Genotype(normal=normal, normal_concat=concat,
-                           reduce=[], reduce_concat=concat)
+                    reduce=[], reduce_concat=concat)
+
 
 def from_str(s):
     """ generate genotype from string
@@ -100,13 +101,14 @@ def parse(alpha, k):
     """
 
     gene = []
-    assert PRIMITIVES[-1] == 'none' # assume last PRIMITIVE is 'none'
+    assert PRIMITIVES[-1] == 'none'  # assume last PRIMITIVE is 'none'
 
     # 1) Convert the mixed op to discrete edge (single op) by choosing top-1 weight edge
     # 2) Choose top-k edges per node by edge score (top-1 weight in edge)
     for edges in alpha:
         # edges: Tensor(n_edges, n_ops)
-        edge_max, primitive_indices = torch.topk(edges[:, :-1], 1) # ignore 'none'
+        edge_max, primitive_indices = torch.topk(
+            edges[:, :-1], 1)  # ignore 'none'
         topk_edge_values, topk_edge_indices = torch.topk(edge_max.view(-1), k)
         node_gene = []
         for edge_idx in topk_edge_indices:
