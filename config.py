@@ -198,11 +198,11 @@ class AugmentConfig(BaseConfig):
         parser.add_argument('--name', default='demo')
         parser.add_argument('--datasets', type=str, default='MRPC', help='input dataset')
         parser.add_argument('--saved_dataset', default='MRPC-nas', help='input dataset')
-        parser.add_argument('--batch_size', type=int, default=16, help='batch size')
+        parser.add_argument('--batch_size', type=int, default=32, help='batch size')
         parser.add_argument('--limit', type=int, default=128, help='max length')
         parser.add_argument('--char_limit', type=int, default=12, help='max length')
-        parser.add_argument('--lr', type=float, default=1e-4, help='lr for weights')
-        parser.add_argument('--lr_min', type=float, default=5e-5, help='minimum lr for weights')
+        parser.add_argument('--lr', type=float, default=0.025, help='lr for weights')
+        parser.add_argument('--lr_min', type=float, default=5e-4, help='minimum lr for weights')
         parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
         parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
         parser.add_argument('--grad_clip', type=float, default=5., help='gradient clipping for weights')
@@ -221,7 +221,7 @@ class AugmentConfig(BaseConfig):
         parser.add_argument('--cutout_length', type=int, default=16, help='cutout length')
         parser.add_argument('--drop_path_prob', type=float, default=0.2, help='drop path prob')
         parser.add_argument('--max_seq_length', type=int, default=128, help='# of layers')
-        parser.add_argument('--teacher_type', type=str, default='rAg', help='Pre-trained teacher model selected in the list: bert, roberta, gpt2,rAg(roberta+gpt2)')
+        parser.add_argument('--teacher_type', type=str, default='bert', help='Pre-trained teacher model selected in the list: bert, roberta, gpt2,rAg(roberta+gpt2)')
 
 
         parser.add_argument('--use_kd', type=str2bool, default=True, help='# of layers')

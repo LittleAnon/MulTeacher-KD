@@ -17,7 +17,6 @@ from models.augment_cnn import AugmentCNN
 acc_tasks = ["mnli", "mrpc", "sst-2", "qqp", "qnli", "rte", "books"]
 corr_tasks = ["sts-b"]
 mcc_tasks = ["cola"]
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 from transformers import RobertaForSequenceClassification, GPT2ForSequenceClassification
 
@@ -64,7 +63,7 @@ def main():
 
     ############### BUILDING MODEL /START ###############
 
-    model = AugmentCNN(config, n_classes, output_mode, auxiliary=False)
+    model = TinyBertForSequenceClassification.from_pretrained('/disk1/wuxiangbo/pretrainModel/student_model/6L_768D_FinalModel/MRPC', num_labels=n_classes)
     pre_d, new_d = {}, {}
     for k, v in model.named_parameters():
         pre_d[k] = torch.sum(v)
@@ -133,7 +132,7 @@ def main():
     # training loop
     for epoch in range(config.epochs):
         drop_prob = config.drop_path_prob * epoch / config.epochs
-        model.drop_path_prob(drop_prob)
+        # model.drop_path_prob(drop_prob)
 
         # training
         train(logger, config, train_dataloader, model, teacher_model, optimizer, epoch, task_name.lower(), emd_tool=emd_tool)
@@ -200,7 +199,7 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
         N = X[0].size(0)
 
         optimizer.zero_grad()
-        logits = model(X)  #[32,2] , [[32,128,768],[32,128,768],[32,128,768],[32,128,768]]
+        logits = model(input_ids=input_ids,token_type_ids=segment_ids,attention_mask=input_mask)  #[32,2] , [[32,128,768],[32,128,768],[32,128,768],[32,128,768]]
         if config.use_emd:
             logits, s_layer_out = logits
         if config.use_kd:

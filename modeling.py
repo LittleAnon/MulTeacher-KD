@@ -1161,6 +1161,7 @@ class TinyBertForSequenceClassification(BertPreTrainedModel):
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, num_labels)
         self.apply(self.init_bert_weights)
+        self.output_mode = 'classification'
 
     def forward(self, input_ids,  token_type_ids,attention_mask, hidden_out=True, attention_out=False):
 

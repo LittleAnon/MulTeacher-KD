@@ -39,7 +39,7 @@ from transformers import (
     set_seed,
 )
 from transformers.trainer_utils import is_main_process
-os.environ['CUDA_VISIBLE_DEVICES'] = '7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 task_to_keys = {
     "cola": ("sentence", None),
@@ -151,7 +151,8 @@ class ModelArguments:
     )
 
 cache_dict = {
-    'bert' :['/disk1/wuxiangbo/pretrainModel/bert/bert_base_uncased','/disk1/wuxiangbo/pretrainModel/bert/bert_mrpc'],
+    # 'bert' :['/disk1/wuxiangbo/pretrainModel/bert/bert_from_hug','/disk1/wuxiangbo/pretrainModel/bert/bert_mrpc'],
+    'bert' :['/disk2/lxk/paperRelated/darts-KD/teacher_utils/bert_base_uncased','/disk1/wuxiangbo/pretrainModel/bert/bert_mrpc'],
     'roberta' :['/disk1/wuxiangbo/pretrainModel/roberta/roberta-base','/disk1/wuxiangbo/pretrainModel/roberta/robert_mrpc'],
     'gpt2' :['/disk1/wuxiangbo/pretrainModel/gpt2/gpt2-base','/disk1/wuxiangbo/pretrainModel/gpt2/gpt2_mrpc']
 }
@@ -208,7 +209,7 @@ def main():
     logger.info(f"Training/evaluation parameters {training_args}")
 
     # Set seed before initializing model.
-    set_seed(training_args.seed)
+    set_seed(66)
 
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
     # or specify a GLUE benchmark task (the dataset will be downloaded automatically from the datasets Hub).
