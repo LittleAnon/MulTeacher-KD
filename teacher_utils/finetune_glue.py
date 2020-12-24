@@ -209,7 +209,7 @@ def main():
     logger.info(f"Training/evaluation parameters {training_args}")
 
     # Set seed before initializing model.
-    set_seed(66)
+    set_seed(training_args.seed)
 
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
     # or specify a GLUE benchmark task (the dataset will be downloaded automatically from the datasets Hub).
