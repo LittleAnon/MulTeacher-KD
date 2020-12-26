@@ -24,7 +24,7 @@ from typing import Optional
 
 import numpy as np
 from datasets import load_dataset, load_metric
-
+from normal_trainer import Trainer
 import transformers
 from transformers import (
     AutoConfig,
@@ -33,7 +33,7 @@ from transformers import (
     EvalPrediction,
     HfArgumentParser,
     PretrainedConfig,
-    Trainer,
+    # Trainer,
     TrainingArguments,
     default_data_collator,
     set_seed,

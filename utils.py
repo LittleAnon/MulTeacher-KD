@@ -515,10 +515,11 @@ def load_roberta_embedding_weight(model, path, train=False):
     pretrain_dict = torch.load(path + "/pytorch_model.bin")
     new_dict = {}
 
-    new_dict['stem.word_embeddings.weight'] = pretrain_dict['roberta.embeddings.word_embeddings.weight']
-    new_dict['stem.position_embeddings.weight'] = pretrain_dict['roberta.embeddings.position_embeddings.weight']
-    new_dict['stem.LayerNorm.weight'] = pretrain_dict['roberta.embeddings.LayerNorm.weight']
-    new_dict['stem.LayerNorm.bias'] = pretrain_dict['roberta.embeddings.LayerNorm.bias']
+    new_dict['bert.embeddings.word_embeddings.weight'] = pretrain_dict['roberta.embeddings.word_embeddings.weight']
+    new_dict['bert.embeddings.position_embeddings.weight'] = pretrain_dict['roberta.embeddings.position_embeddings.weight']
+    new_dict['bert.embeddings.token_type_embeddings.weight'] = pretrain_dict['roberta.embeddings.token_type_embeddings.weight']
+    new_dict['bert.embeddings.LayerNorm.weight'] = pretrain_dict['roberta.embeddings.LayerNorm.weight']
+    new_dict['bert.embeddings.LayerNorm.bias'] = pretrain_dict['roberta.embeddings.LayerNorm.bias']
     model.load_state_dict(new_dict, strict=False)
 
 
@@ -651,10 +652,9 @@ def load_glue_dataset(config):
         eval_dataloader = []
         train_eval_dataloader = []
         for i in range(2):
-            train_data, _ = get_tensor_data(output_mode, train_features[i])
-            eval_data, eval_labels = get_tensor_data(
-                output_mode, eval_features[i])
-            train_eval_data, _ = get_tensor_data(output_mode, eval_features[i])
+            train_data, _ = get_tensor_data(output_mode, train_features[i],True)
+            eval_data, eval_labels = get_tensor_data(output_mode, eval_features[i],True)
+            train_eval_data, _ = get_tensor_data(output_mode, eval_features[i],True)
             if not config.multi_gpu:
                 train_sampler = RandomSampler(train_data)
                 train_eval_sampler = RandomSampler(train_eval_data)
