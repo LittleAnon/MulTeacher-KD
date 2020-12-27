@@ -572,6 +572,7 @@ class Trainer:
         """
         # This might change the seed so needs to run first.
         self._hp_search_setup(trial)
+        print('tpu is available',is_torch_tpu_available())
 
         # Model re-init
         if self.model_init is not None:
@@ -717,14 +718,14 @@ class Trainer:
             if isinstance(train_dataloader, DataLoader) and isinstance(train_dataloader.sampler, DistributedSampler):
                 train_dataloader.sampler.set_epoch(epoch)
 
-            if is_torch_tpu_available():
-                parallel_loader = pl.ParallelLoader(train_dataloader, [self.args.device]).per_device_loader(
-                    self.args.device
-                )
-                epoch_iterator = parallel_loader
-            else:
-                epoch_iterator = train_dataloader
-
+            # if is_torch_tpu_available():
+            #     parallel_loader = pl.ParallelLoader(train_dataloader, [self.args.device]).per_device_loader(
+            #         self.args.device
+            #     )
+            #     epoch_iterator = parallel_loader
+            # else:
+            #     epoch_iterator = train_dataloader
+            epoch_iterator = train_dataloader
             # Reset the past mems state at the beginning of each epoch if necessary.
             if self.args.past_index >= 0:
                 self._past = None
@@ -828,7 +829,9 @@ class Trainer:
         return TrainOutput(self.state.global_step, self._total_loss_scalar / self.state.global_step)
 
     def _maybe_log_save_evaluate(self, tr_loss, model, trial, epoch):
+        print("debug loss:{}".format(tr_loss.item() / (self.state.global_step - self._globalstep_last_logged)))
         if self.control.should_log:
+        # if True:
             logs: Dict[str, float] = {}
             tr_loss_scalar = tr_loss.item()
             # reset tr_loss to zero
@@ -1075,26 +1078,26 @@ class Trainer:
         model.train()
         inputs = self._prepare_inputs(inputs)
 
-        if self.args.fp16 and _use_native_amp:
-            with autocast():
-                loss = self.compute_loss(model, inputs)
-        else:
-            loss = self.compute_loss(model, inputs)
-
+        # if self.args.fp16 and _use_native_amp:
+        #     with autocast():
+        #         loss = self.compute_loss(model, inputs)
+        # else:
+        #     loss = self.compute_loss(model, inputs)
+        loss = self.compute_loss(model, inputs)
         if self.args.n_gpu > 1:
             loss = loss.mean()  # mean() to average on multi-gpu parallel training
 
         if self.args.gradient_accumulation_steps > 1:
             loss = loss / self.args.gradient_accumulation_steps
 
-        if self.args.fp16 and _use_native_amp:
-            self.scaler.scale(loss).backward()
-        elif self.args.fp16 and _use_apex:
-            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                scaled_loss.backward()
-        else:
-            loss.backward()
-
+        # if self.args.fp16 and _use_native_amp:
+        #     self.scaler.scale(loss).backward()
+        # elif self.args.fp16 and _use_apex:
+        #     with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+        #         scaled_loss.backward()
+        # else:
+        #     loss.backward()
+        loss.backward()
         return loss.detach()
 
     def compute_loss(self, model, inputs):
@@ -1469,11 +1472,12 @@ class Trainer:
                 ignore_keys = []
 
         with torch.no_grad():
-            if self.args.fp16 and _use_native_amp:
-                with autocast():
-                    outputs = model(**inputs)
-            else:
-                outputs = model(**inputs)
+            # if self.args.fp16 and _use_native_amp:
+            #     with autocast():
+            #         outputs = model(**inputs)
+            # else:
+            #     outputs = model(**inputs)
+            outputs = model(**inputs)
             if has_labels:
                 if isinstance(outputs, dict):
                     loss = outputs["loss"].mean().detach()

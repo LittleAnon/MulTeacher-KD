@@ -157,7 +157,6 @@ class ModelArguments:
             "help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
     )
 
-
 def main():
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
