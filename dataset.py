@@ -55,7 +55,7 @@ class MultiTaskBatchSampler(BatchSampler):
             task_id = self._datasets[local_task_idx].get_task_id()
             batch = next(all_iters[local_task_idx])
             yield [(task_id, sample_id) for sample_id in batch]
-    
+
     @staticmethod
     def _gen_task_indices(train_data_list, mix_opt, extra_task_ratio):
         all_indices = []

@@ -344,10 +344,10 @@ class AugmentConfig(BaseConfig):
         super().__init__(**vars(args))
 
         teacher_model_dict = {
-            'roberta': '/root/program/embedding/bert_pretrained_model/roberta/robert_{}'.format(self.name),
-            'gpt2': '/root/program/embedding/bert_pretrained_model/gpt2/gpt2_{}'.format(self.name),
-                    'bert': '/root/program/embedding/bert_pretrained_model/bert/bert_{}'.format(self.name),
-                    'rAg': ['/root/program/embedding/bert_pretrained_model/roberta/robert_{}'.format(self.name), '/root/program/embedding/bert_pretrained_model/gpt2/gpt2_{}'.format(self.name)]
+            'roberta': '/data/ceph/zhansu/embedding/roberta/roberta_{}'.format(self.name),
+            'gpt2': '/data/ceph/zhansu/embedding/gpt2/gpt2_{}'.format(self.name),
+            'bert': '/data/ceph/zhansu/embedding/bert/bert_{}'.format(self.name),
+                    'rAg': ['/data/ceph/zhansu/embedding/roberta/roberta_{}'.format(self.name), '/data/ceph/zhansu/embedding/gpt2/gpt2_{}'.format(self.name)]
 
         }
 

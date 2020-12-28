@@ -264,45 +264,43 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
     """Loads a data file into a list of `InputBatch`s."""
 
     label_map = {label: i for i, label in enumerate(label_list)}
-
     features = [[], []]
-    if tok_type is 'rAg':
+    if tok_type == 'rAg':
         tok_type_list = ['roberta', 'gpt2']
     else:
         tok_type_list = [tok_type]
         tokenizers = [tokenizers]
     for i in range(len(tok_type_list)):
         tokenizer = tokenizers[i]
-        tok_type = tok_type_list[i]
+        tok_type_temp = tok_type_list[i]
 
         for (ex_index, example) in enumerate(examples):
             if ex_index % 10000 == 0 and is_master:
                 print("Writing example %d of %d" % (ex_index, len(examples)))
-
             tokens_a = tokenizer.tokenize(example.text_a)
             tokens_b = None
             if example.text_b:
                 tokens_b = tokenizer.tokenize(example.text_b)
                 _truncate_seq_pair(tokens_a, tokens_b, max_seq_length - 3)
             else:
-                if tok_type == 'gpt2':
+                if tok_type_temp == 'gpt2':
                     if len(tokens_a) > max_seq_length - 1:
                         tokens_a = tokens_a[:(max_seq_length - 1)]
                 else:
                     if len(tokens_a) > max_seq_length - 2:
                         tokens_a = tokens_a[:(max_seq_length - 2)]
             # 和finetune的数据格式保持一致，bert和gpt2和roberta的特殊字符添加格式还不太一样
-            if tok_type == 'bert':
+            if tok_type_temp == 'bert':
                 cls_ = tokenizer.cls_token
                 sep_ = tokenizer.sep_token
                 pad_ = tokenizer.pad_token_id
                 tokens = [cls_] + tokens_a + [sep_]
-            elif tok_type == 'gpt2':
+            elif tok_type_temp == 'gpt2':
                 cls_ = tokenizer.bos_token
                 sep_ = tokenizer.eos_token
                 pad_ = tokenizer.pad_token_id
                 tokens = tokens_a
-            elif tok_type == 'roberta':
+            elif tok_type_temp == 'roberta':
                 cls_ = tokenizer.cls_token
                 sep_ = tokenizer.sep_token
                 pad_ = tokenizer.pad_token_id
@@ -338,7 +336,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
                 raise KeyError(output_mode)
 
             if ex_index == 0 and is_master:
-                print("*** Example for %s ***" % (tok_type))
+                print("*** Example for %s ***" % (tok_type_temp))
                 print("guid: %s" % (example.guid))
                 print("tokens: %s" % " ".join([str(x)
                                                for x in tokens]).encode('utf-8'))
@@ -357,7 +355,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
                     segment_ids=segment_ids,
                     label_id=label_id,
                     seq_length=seq_length))
-    if tok_type is 'rAg':
+    if tok_type == 'rAg':
         return features
     elif len(features) > 0:
         return features[0]
@@ -515,11 +513,10 @@ def load_roberta_embedding_weight(model, path, train=False):
     pretrain_dict = torch.load(path + "/pytorch_model.bin")
     new_dict = {}
 
-    new_dict['bert.embeddings.word_embeddings.weight'] = pretrain_dict['roberta.embeddings.word_embeddings.weight']
-    new_dict['bert.embeddings.position_embeddings.weight'] = pretrain_dict['roberta.embeddings.position_embeddings.weight']
-    new_dict['bert.embeddings.token_type_embeddings.weight'] = pretrain_dict['roberta.embeddings.token_type_embeddings.weight']
-    new_dict['bert.embeddings.LayerNorm.weight'] = pretrain_dict['roberta.embeddings.LayerNorm.weight']
-    new_dict['bert.embeddings.LayerNorm.bias'] = pretrain_dict['roberta.embeddings.LayerNorm.bias']
+    new_dict['stem.word_embeddings.weight'] = pretrain_dict['roberta.embeddings.word_embeddings.weight']
+    new_dict['stem.position_embeddings.weight'] = pretrain_dict['roberta.embeddings.position_embeddings.weight']
+    new_dict['stem.LayerNorm.weight'] = pretrain_dict['roberta.embeddings.LayerNorm.weight']
+    new_dict['stem.LayerNorm.bias'] = pretrain_dict['roberta.embeddings.LayerNorm.bias']
     model.load_state_dict(new_dict, strict=False)
 
 
@@ -627,6 +624,7 @@ def load_glue_dataset(config):
             use_fast=config.use_fast_tokenizer
         )
         tokenizer = [tokenizer_r, tokenizer_g]
+        print("len tokenizer:",len(tokenizer))
     else:
         tokenizer = AutoTokenizer.from_pretrained(
             config.tokenizer_name if config.tokenizer_name else config.teacher_model,
@@ -639,7 +637,7 @@ def load_glue_dataset(config):
     train_features = convert_examples_to_features(train_examples, label_list,
                                                   config.max_seq_length, tokenizer,
                                                   output_mode, config.is_master, tok_type=config.teacher_type)
-
+    print("len featuers:",len(train_features))
     eval_examples = processor.get_dev_examples('data/' + config.source + '/' + task_name +
                                                '/')
     eval_features = convert_examples_to_features(eval_examples, label_list,
@@ -652,9 +650,10 @@ def load_glue_dataset(config):
         eval_dataloader = []
         train_eval_dataloader = []
         for i in range(2):
-            train_data, _ = get_tensor_data(output_mode, train_features[i],True)
-            eval_data, eval_labels = get_tensor_data(output_mode, eval_features[i],True)
-            train_eval_data, _ = get_tensor_data(output_mode, eval_features[i],True)
+            train_data, _ = get_tensor_data(output_mode, train_features[i])
+            eval_data, eval_labels = get_tensor_data(
+                output_mode, eval_features[i])
+            train_eval_data, _ = get_tensor_data(output_mode, eval_features[i])
             if not config.multi_gpu:
                 train_sampler = RandomSampler(train_data)
                 train_eval_sampler = RandomSampler(train_eval_data)
