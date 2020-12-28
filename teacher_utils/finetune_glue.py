@@ -21,7 +21,7 @@ import random
 import sys
 from dataclasses import dataclass, field
 from typing import Optional
-
+import torch
 import numpy as np
 from datasets import load_dataset, load_metric
 from normal_trainer import Trainer
@@ -220,6 +220,16 @@ def main():
 
     # Set seed before initializing model.
     set_seed(training_args.seed)
+    random.seed(training_args.seed)
+
+    os.environ['PYTHONHASHSEED'] =str(training_args.seed)
+
+    np.random.seed(training_args.seed)
+    torch.manual_seed(training_args.seed)
+    torch.cuda.manual_seed(training_args.seed)
+    torch.cuda.manual_seed_all(training_args.seed)
+    torch.backends.cudnn.deterministic =True
+
 
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
     # or specify a GLUE benchmark task (the dataset will be downloaded automatically from the datasets Hub).
