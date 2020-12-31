@@ -44,7 +44,7 @@ def main():
     logger = FileLogger('./log', config.is_master, config.is_master)
 
     use_emd = config.use_emd
-    
+
     # set seed
     np.random.seed(config.seed)
     torch.manual_seed(config.seed)
@@ -63,7 +63,7 @@ def main():
 
     ############### BUILDING MODEL /START ###############
 
-    model = TinyBertForSequenceClassification.from_pretrained('/disk1/wuxiangbo/pretrainModel/student_model/6L_768D_FinalModel/MRPC', num_labels=n_classes)
+    model = TinyBertForSequenceClassification.from_pretrained('/data/ceph/zhansu/embedding/General_TinyBERT_4L_312D', num_labels=n_classes)
     pre_d, new_d = {}, {}
     for k, v in model.named_parameters():
         pre_d[k] = torch.sum(v)
@@ -82,7 +82,7 @@ def main():
 
     for k, v in model.named_parameters():
         new_d[k] = torch.sum(v)
-        
+
     logger.info("=" * 10 + "alter" + "=" * 10)
     for k in pre_d.keys():
         if pre_d[k] != new_d[k]:
@@ -199,9 +199,11 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
         N = X[0].size(0)
 
         optimizer.zero_grad()
-        logits = model(input_ids=input_ids,token_type_ids=segment_ids,attention_mask=input_mask)  #[32,2] , [[32,128,768],[32,128,768],[32,128,768],[32,128,768]]
+        student_outputs = model(input_ids=input_ids,token_type_ids=segment_ids,attention_mask=input_mask,is_student = True)  #[32,2] , [[32,128,768],[32,128,768],[32,128,768],[32,128,768]]
+
+        logits, _ = student_outputs
         if config.use_emd:
-            logits, s_layer_out = logits
+            logits, s_layer_out = student_outputs
         if config.use_kd:
             # with torch.no_grad():
             #     check_ids = input_ids.cpu()  #[32,128]
@@ -233,6 +235,7 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
             # print(np.argmax(teacher_logits.detach().cpu().numpy(),axis=1))
             # print(label_ids.cpu().numpy())
             # print("#####################################################")
+            # print("logits:",logits)
             kd_loss, _, _ = distillation_loss(logits, y, teacher_logits, model.output_mode, alpha=config.kd_alpha)
             rep_loss = 0
             if config.use_emd:

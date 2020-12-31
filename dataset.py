@@ -105,8 +105,8 @@ class MultiTaskDataset(Dataset):
 
 def get_tensor_data(output_mode, features,mul_teacher=False):
 
-    if not mul_teacher:
-        features = features[0]
+    # if not mul_teacher:
+    #     features = features[0]
 
     if output_mode == "classification":
         all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)

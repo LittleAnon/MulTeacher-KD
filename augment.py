@@ -227,7 +227,11 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
             elif config.teacher_type == 'bert':
                 teacher_logits, teacher_reps = teacher_model(
                     input_ids, segment_ids, input_mask)
-
+                # print("teacher_logits:",teacher_logits.shape)
+                # print("len_logits",len(teacher_reps))
+                # for item in teacher_reps:
+                #     print(item.shape)
+                # print(['*']*20)
             elif config.teacher_type == 'rAg':
                 output_dict_r = teacher_model[0](
                     input_ids, attention_mask=input_mask, output_hidden_states=True, return_dict=True)
@@ -260,8 +264,8 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
                     s_layer_out, teacher_reps, return_distance=True)
                 if config.update_emd:
                     emd_tool.update_weight(flow, distance)
-            # loss = kd_loss * config.emd_only + rep_loss * config.emd_rate
-            loss = kd_loss
+            loss = kd_loss * config.emd_rate + rep_loss * config.emd_rate
+            # loss = kd_loss
         else:
             loss = criterion(logits, y)
         loss.backward()

@@ -4,14 +4,10 @@ Liu, Hanxiao, Karen Simonyan, and Yiming Yang. "Darts: Differentiable architectu
 
 ## Requirements
 
-- python 3
-- pytorch >= 0.4.1
-- graphviz
-    - First install using `apt install` and then `pip install`.
-- numpy
-- tensorboardX
-- transformers=4.0.1
+```
+pip install -r requirements.txt
 
+```
 ## Run example
 
 - Augment
@@ -19,7 +15,8 @@ Liu, Hanxiao, Karen Simonyan, and Yiming Yang. "Darts: Differentiable architectu
 ```shell
 # genotype from search results
 # python3 augment.py --name sst --dataset sst --batch_size 256 --epochs 250 --limit 128 --n_classes 2 --genotype "Genotype(normal=[[('conv_3x3', 0)], [('highway', 0)], [('conv_3x3', 2)], [('conv_5x5', 1)], [('conv_3x3', 3)], [('conv_3x3', 1)]], normal_concat=range(1, 7), reduce=[], reduce_concat=range(1, 7))"
-python3 augment.py --name mrpc --dataset mrpc --batch_size 12 --epochs 25 --limit 128 --n_classes 2  --teacher_type bert
+CUDA_VISIBLE_DEVICES=0 nohup python3 augment.py --name mrpc   --limit 128 --n_classes 2  --teacher_type bert --seed 66 > bert_mrpc_1 2>&1 &
+
 ```
 
 ### Cautions
