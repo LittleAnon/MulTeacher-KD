@@ -297,9 +297,12 @@ def validate(logger, config, data_loader, model, epoch, cur_step, task_name, mod
             X = [input_ids, input_mask, segment_ids, seq_lengths]
             y = label_ids
             N = X[0].size(0)
-            logits = model(X)
-            if config.use_emd:
-                logits, _ = logits
+
+            student_outputs = model(input_ids=input_ids,token_type_ids=segment_ids,attention_mask=input_mask,is_student = True)  #[32,2] , [[32,128,768],[32,128,768],[32,128,768],[32,128,768]]
+
+            # logits = model(X)
+            # if config.use_emd:
+            logits, _ = student_outputs
             loss = criterion(logits, y)
             correct = torch.sum(torch.argmax(logits, axis=1) == y)
 
