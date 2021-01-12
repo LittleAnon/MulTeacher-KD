@@ -392,6 +392,15 @@ class AugmentTransform(nn.Module, ModuleUtilsMixin):
         self.n_classes = n_classes
         self.all_return = config.use_emd
         self.linear = nn.Linear(config.hidden_size, self.n_classes)
+        # self.init_weights()
+
+    def _prune_heads(self, heads_to_prune):
+        """
+        Prunes heads of the model. heads_to_prune: dict of {layer_num: list of heads to prune in this layer} See base
+        class PreTrainedModel
+        """
+        for layer, heads in heads_to_prune.items():
+            self.encoder.layer[layer].attention.prune_heads(heads)
 
     def forward(
         self,
@@ -453,8 +462,9 @@ class AugmentTransform(nn.Module, ModuleUtilsMixin):
 
         output_seq = pooled_output if pooled_output is not None else sequence_output
         logits = self.linear(output_seq)
-        student_layer_out = encoder_outputs[1:][0]
+
         if self.all_return:
+            student_layer_out = encoder_outputs[1:][0]
             return logits, student_layer_out
         else:
             return logits

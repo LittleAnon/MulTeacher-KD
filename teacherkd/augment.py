@@ -1,5 +1,6 @@
 # coding=utf-8
 """ Training augmented model """
+from sklearn.metrics import recall_score
 from transformers import RobertaForSequenceClassification, GPT2ForSequenceClassification, BertForSequenceClassification
 import os
 from math import sqrt
@@ -9,7 +10,8 @@ import torch
 import torch.nn as nn
 
 import teacherkd.utils as utils
-from transformers.data.metrics import glue_compute_metrics as compute_metrics
+# from transformers.data.metrics import glue_compute_metrics as compute_metrics
+from teacherkd.metric_utils import compute_metrics
 from teacherkd.config import AugmentConfig
 from teacherkd.utils import init_gpu_params
 from teacherkd.file_logger import FileLogger
@@ -140,8 +142,9 @@ def main():
     ############### TRAIN /START ###############
     # training loop
     for epoch in range(config.epochs):
-        drop_prob = config.drop_path_prob * epoch / config.epochs
-        # model.drop_path_prob(drop_prob)
+        if config.student_type == 'cnn':
+            drop_prob = config.drop_path_prob * epoch / config.epochs
+            model.drop_path_prob(drop_prob)
 
         # training
         train(logger, config, train_dataloader, model, teacher_model,
@@ -336,7 +339,9 @@ def validate(logger, config, data_loader, model, epoch, cur_step, task_name, mod
             preds = np.argmax(preds, axis=1)
         elif model.output_mode == "regression":
             preds = np.squeeze(preds)
+        print(preds)
         result = compute_metrics(task_name, preds, eval_labels)
+        score = recall_score(eval_labels,preds)
         print(np.sum(preds == eval_labels), len(eval_labels), result)
         if task_name == "cola":
             acc = result['mcc']
