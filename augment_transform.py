@@ -67,17 +67,20 @@ def main():
     pre_d, new_d = {}, {}
     for k, v in model.named_parameters():
         pre_d[k] = torch.sum(v)
-    if config.teacher_type == 'gpt2':
-        utils.load_gpt2_embedding_weight(model,
-                                    config.teacher_model)
-    elif config.teacher_type == 'bert':
-        utils.load_bert_embedding_weight(model,
-                                    config.teacher_model)
-    elif config.teacher_type == 'roberta':
-        utils.load_roberta_embedding_weight(model,
-                                         config.teacher_model)
-    elif config.teacher_type == 'rAg':
-        utils.load_roberta_embedding_weight(model,config.teacher_model[0])
+
+    utils.load_bert_embedding_weight(model,'/data/ceph/zhansu/embedding/bert/bert_mrpc')
+
+    # if config.teacher_type == 'gpt2':
+    #     utils.load_gpt2_embedding_weight(model,
+    #                                 config.teacher_model)
+    # elif config.teacher_type == 'bert':
+    #     utils.load_bert_embedding_weight(model,
+    #                                 config.teacher_model)
+    # elif config.teacher_type == 'roberta':
+    #     utils.load_roberta_embedding_weight(model,
+    #                                      config.teacher_model)
+    # elif config.teacher_type == 'rAg':
+    #     utils.load_roberta_embedding_weight(model,config.teacher_model[0])
 
 
     for k, v in model.named_parameters():
