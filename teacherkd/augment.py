@@ -11,7 +11,9 @@ sys.path.append("..")
 import numpy as np
 import torch
 import torch.nn as nn
-
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import sys
+sys.path.append(BASE_DIR)
 import teacherkd.utils as utils
 # from transformers.data.metrics import glue_compute_metrics as compute_metrics
 from teacherkd.metric_utils import compute_metrics

@@ -7,6 +7,10 @@ from teacherkd import genotypes as gt
 common_ini_section = 'common'
 train_ini_section = 'train'
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import sys
+sys.path.append(BASE_DIR)
+
 def get_parser(name):
     """ make default formatted parser """
     parser = argparse.ArgumentParser(
@@ -119,7 +123,7 @@ class AugmentConfig(BaseConfig):
         parser.add_argument('--use_fast_tokenizer', type=bool,
                             default=True, help='whether to use fast tokenizer')
         parser.add_argument('--default_conf_name', type=str,
-                            default='anon', help='default init config file name')
+                            default='suzhan', help='default init config file name')
 
         return parser
 
