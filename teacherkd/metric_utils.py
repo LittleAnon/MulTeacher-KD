@@ -9,9 +9,16 @@ def simple_accuracy(preds, labels):
 
 def acc_and_f1(preds, labels):
     acc = simple_accuracy(preds, labels)
-    f1 = f1_score(y_true=labels, y_pred=preds,average='macro')
+
+    f1_macro = f1_score(y_true=labels, y_pred=preds,average='macro')
+    f1_micro = f1_score(y_true=labels, y_pred=preds,average='micro')
+    f1_binary = f1_score(y_true=labels, y_pred=preds)
+    f1 = f1_macro
     return {
         "acc": acc,
+        "f1_macro": f1_macro,
+        "f1_micro": f1_micro,
+        "f1_binary": f1_binary,
         "f1": f1,
         "acc_and_f1": (acc + f1) / 2,
     }

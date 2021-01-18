@@ -4,7 +4,10 @@ from sklearn.metrics import recall_score
 from transformers import RobertaForSequenceClassification, GPT2ForSequenceClassification, BertForSequenceClassification
 import os
 from math import sqrt
-
+import sys
+current_dir = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(current_dir)
+sys.path.append("..")
 import numpy as np
 import torch
 import torch.nn as nn
@@ -20,8 +23,21 @@ from teacherkd.file_logger import FileLogger
 from teacherkd.kdTool import Emd_Evaluator, distillation_loss
 from teacherkd.student_model.cnn.augment_cnn import AugmentCNN
 from teacherkd.student_model.transform.augment_transform import AugmentTransform
-
+from teacherkd.report.reporter import generate_report_by_metrics
 os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+
+task_metric_dict = {
+            "cola":'mcc',
+            "sst-2":'acc',
+            "mnli":'acc',
+            "mnli-mm":'acc',
+            "qnli":'acc',
+            "rte":'acc',
+            "books":'acc',
+            "mrpc":'f1',
+            "qqp":'f1',
+            "sts-b":'corr',
+        }
 
 device = torch.device(
     "cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -138,6 +154,7 @@ def main():
         optimizer, config.epochs/2, eta_min=config.lr_min)
     torch.autograd.set_detect_anomaly(True)
     best_top1 = 0
+    best_top1_epoch = 0
 
     ############### BUILDING MODEL /END ###############
 
@@ -148,38 +165,59 @@ def main():
 
     ############### TRAIN /START ###############
     # training loop
+
+    train_check_step_mark_record = []
+
+    train_epoch_mark_record = []
+    valid_epoch_mark_record = []
     for epoch in range(config.epochs):
         if config.student_type == 'cnn':
             drop_prob = config.drop_path_prob * epoch / config.epochs
             model.drop_path_prob(drop_prob)
 
         # training
-        train(logger, config, train_dataloader, model, teacher_model,
-              optimizer, epoch, task_name.lower(), emd_tool=emd_tool)
-
+        train_metric_results = train(logger, config, train_dataloader, model, teacher_model, optimizer, epoch, task_name.lower(),
+                  emd_tool=emd_tool)
+        train_check_step_mark_record += [train_metric_results]
+        this_epoch_final_metric = train_metric_results[-1]
+        train_epoch_mark_record += [this_epoch_final_metric]
         lr_scheduler.step()
         # validation
         if config.teacher_type == 'rAg':
             cur_step = (epoch + 1) * len(train_dataloader[0])
-            top1 = validate(
+            val_result = validate(
                 logger, config, eval_dataloader[0], model, epoch, cur_step, task_name.lower(), "val")
         else:
             cur_step = (epoch + 1) * len(train_dataloader)
-            top1 = validate(logger, config, eval_dataloader,
+            val_result = validate(logger, config, eval_dataloader,
                             model, epoch, cur_step, task_name.lower(), "val")
 
         # top1 = validate(test_loader, model, criterion, epoch, cur_step, "test", len(task_types))
         # save
+        valid_epoch_mark_record += [val_result]
+        metric_name = task_metric_dict[task_name.lower()]
+        top1 = val_result[metric_name]
         if best_top1 < top1:
             best_top1 = top1
             is_best = True
+            best_top1_epoch = epoch
         else:
             is_best = False
         utils.save_checkpoint(model, config.path, is_best)
-        logger.info("Present best Prec@1 = {:.4%}".format(best_top1))
+        logger.info("Present best {}@1 = {:.4%}".format(metric_name,best_top1))
         print("")
 
-    logger.info("Final best Prec@1 = {:.4%}".format(best_top1))
+    logger.info("Final best {}@1 = {:.4%}".format(metric_name,best_top1))
+    # 如果有老师，config里记一下老师的评估参数
+    if config.teacher_type is not None:
+        with open(config.teacher_model + "/eval_results_{}.txt".format(config.datasets.lower())) as teacher_metric:
+            config.teacher_metric = ''.join(teacher_metric.readlines())
+    # 记录更详细的最优评估（用的什么指标，最优值多少，是哪个epoch）
+    config.best_mark = {'metric_name':metric_name,'best_score':best_top1,'best_epoch':best_top1_epoch}
+    generate_report_by_metrics(config,
+                               train_check_step_mark_record,#训练时每个checkStep的评估指标
+                               train_epoch_mark_record,     #训练时每个epoch的评估指标
+                               valid_epoch_mark_record)     #验证时每个epoch的评估指标
     ############### TRAIN /END ###############
 
 
@@ -194,7 +232,7 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
     cur_step = epoch * len(train_loader[0])
     cur_lr = optimizer.param_groups[0]['lr']
 
-    logger.info("Epoch {} LR {}".format(epoch, cur_lr))
+    logger.info("Epoch {} LR {}".format(epoch + 1, cur_lr))
     # writer.add_scalar('train/lr', cur_lr, cur_step)
     model.train()
 
@@ -204,6 +242,8 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
         criterion = nn.MSELoss()
 
     loader_data = [i for i in train_loader[0]]
+
+    metric_results = []
 
     if config.teacher_type == 'rAg':
         loader_data_plus = [i for i in train_loader[0]]
@@ -291,22 +331,20 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
             preds = np.squeeze(preds)        # top5.update(prec5.item(), N)
         result = compute_metrics(task_name, preds, y.detach().cpu().numpy())
 
-        if task_name == "cola":
-            train_acc = result['mcc']
-        elif task_name in ["sst-2", "mnli", "mnli-mm", "qnli", "rte", 'books']:
-            train_acc = result['acc']
-        elif task_name in ["mrpc", "qqp"]:
-            train_acc = result['f1']
-        elif task_name == "sts-b":
-            train_acc = result['corr']
+        metric_name = task_metric_dict[task_name]
+        train_acc = result[metric_name]
         losses.update(loss.item(), N)
         top1.update(train_acc, N)
 
         if step % config.print_freq == 0 or step == total_num_step - 1:
             logger.info(
-                "Train: , [{:2d}/{}] Step {:03d}/{:03d} Loss {:.3f} Prec {top1:.1%}"
-                .format(epoch + 1, config.epochs, step, total_num_step - 1, losses.avg, top1=train_acc))
+                "Train: , [{:2d}/{}] Step {:03d}/{:03d} Loss {:.3f} {} {top1:.1%}"
+                .format(epoch + 1, config.epochs, step, total_num_step - 1, losses.avg,metric_name, top1=train_acc))
+            result['step'] = total_num_step * epoch + cur_step
+            result['loss'] = losses.avg
+            metric_results.append(result)
         cur_step += 1
+    return metric_results
 
 
 def validate(logger, config, data_loader, model, epoch, cur_step, task_name, mode="dev"):
@@ -319,6 +357,7 @@ def validate(logger, config, data_loader, model, epoch, cur_step, task_name, mod
     eval_labels = []
     model.eval()
     preds = []
+    epoch_ = epoch + 1
     with torch.no_grad():
         for step, data in enumerate(data_loader):
             data = [x.to(device, non_blocking=True) for x in data]
@@ -347,20 +386,14 @@ def validate(logger, config, data_loader, model, epoch, cur_step, task_name, mod
         elif model.output_mode == "regression":
             preds = np.squeeze(preds)
         result = compute_metrics(task_name, preds, eval_labels)
-        score = recall_score(eval_labels,preds)
-        print(np.sum(preds == eval_labels), len(eval_labels), result)
-        if task_name == "cola":
-            acc = result['mcc']
-        elif task_name in ["sst-2", "mnli", "mnli-mm", "qnli", "rte", 'books']:
-            acc = result['acc']
-        elif task_name in ["mrpc", "qqp"]:
-            acc = result['f1']
-        elif task_name == "sts-b":
-            acc = result['corr']
 
+        print(np.sum(preds == eval_labels), len(eval_labels), result)
+        metric_name = task_metric_dict[task_name]
+        acc = result[metric_name]
+        result['epoch'] = epoch_
     logger.info(
-        mode + ": [{:2d}/{}] Final Prec@1 {:.4%}".format(epoch + 1, config.epochs, acc))
-    return acc
+        mode + ": [{:2d}/{}] Final {}@1 {:.4%}".format(epoch_, config.epochs, metric_name, acc))
+    return result
 
 
 if __name__ == "__main__":
