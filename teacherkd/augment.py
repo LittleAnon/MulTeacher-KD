@@ -141,6 +141,11 @@ def main():
 
     ############### BUILDING MODEL /END ###############
 
+    #### TEST TEACHERMODEL PERFORMANCE ################
+
+    validate(logger, config, train_dataloader,
+                            model, 0, 0, task_name.lower(), "train")
+
     ############### TRAIN /START ###############
     # training loop
     for epoch in range(config.epochs):
@@ -341,7 +346,6 @@ def validate(logger, config, data_loader, model, epoch, cur_step, task_name, mod
             preds = np.argmax(preds, axis=1)
         elif model.output_mode == "regression":
             preds = np.squeeze(preds)
-        print(preds)
         result = compute_metrics(task_name, preds, eval_labels)
         score = recall_score(eval_labels,preds)
         print(np.sum(preds == eval_labels), len(eval_labels), result)

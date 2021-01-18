@@ -94,7 +94,7 @@ class AugmentConfig(BaseConfig):
         parser.add_argument('--use_kd', type=str2bool,
                             default=True, help='Whether to use the teacher model')
         parser.add_argument('--use_emd', type=str2bool,
-                            default=True, help='Whether to use embedding')
+                            default=False, help='Whether to use embedding')
         parser.add_argument('--kd_alpha', type=float,
                             default=1.0, help='only use if use_kd == True, The coefficient of knowledge distillation')
 

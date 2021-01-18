@@ -93,7 +93,7 @@ class AugmentCNN(nn.Module):
 
     def forward(self, x):
         input_ids, mask, segment_ids, seq_lengths = x
-        
+
         student_layer_out = []
         s0 = s1 = self.stem(input_ids, segment_ids)
         for cell in self.cells:
