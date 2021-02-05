@@ -75,8 +75,13 @@ def main():
 
     ############# LOADING DATA /START ###############
     task_name = config.datasets
-    train_dataloader, _, eval_dataloader, output_mode, n_classes, config = utils.load_glue_dataset(
+    if task_name not in ['TREC','WIKI']:
+        train_dataloader, _, eval_dataloader, output_mode, n_classes, config = utils.load_glue_dataset(
         config)
+    else:
+        train_dataloader, _, eval_dataloader, output_mode, n_classes, config = utils.load_qa_dataset(
+        config)
+
     logger.info(f"train_loader length {len(train_dataloader)}")
 
     ############# LOADING DATA /END ###############
