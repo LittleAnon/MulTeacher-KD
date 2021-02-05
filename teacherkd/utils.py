@@ -73,8 +73,86 @@ class AverageMeter():
         self.count += n
         self.avg = self.sum / self.count
 
+class InputExample(object):
+    """A single training/test example for simple sequence classification."""
 
+    def __init__(self, guid, text_a, text_b=None, label=None):
+        """Constructs a InputExample.
 
+        Args:
+            guid: Unique id for the example.
+            text_a: string. The untokenized text of the first sequence. For single
+            sequence tasks, only this sequence must be specified.
+            text_b: (Optional) string. The untokenized text of the second sequence.
+            Only must be specified for sequence pair tasks.
+            label: (Optional) string. The label of the example. This should be
+            specified for train and dev examples, but not for test examples.
+        """
+        self.guid = guid
+        self.text_a = text_a
+        self.text_b = text_b
+        self.label = label
+class DataProcessor(object):
+    """Base class for data converters for sequence classification data sets."""
+
+    def get_train_examples(self, data_dir):
+        """Gets a collection of `InputExample`s for the train set."""
+        raise NotImplementedError()
+
+    def get_dev_examples(self, data_dir):
+        """Gets a collection of `InputExample`s for the dev set."""
+        raise NotImplementedError()
+
+    def get_labels(self):
+        """Gets the list of labels for this data set."""
+        raise NotImplementedError()
+
+    @classmethod
+    def _read_tsv(cls, input_file, quotechar=None):
+        """Reads a tab separated value file."""
+        with open(input_file, "r", encoding="utf-8") as f:
+            reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
+            lines = []
+            for line in reader:
+                if sys.version_info[0] == 2:
+                    line = list(unicode(cell, 'utf-8') for cell in line)
+                lines.append(line)
+            return lines
+
+class QaProcessor(DataProcessor):
+    """  Processor for qa datasets such as trec,wiki, etc"""
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+
+    def get_aug_examples(self, data_dir):
+        return self._create_examples(
+            self._read_tsv(os.path.join(data_dir, "train_aug.tsv")), "aug")
+
+    def get_labels(self):
+        """See base class."""
+        return ["0", "1"]
+
+    def _create_examples(self, lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
+            #if i == 0:
+            #    continue
+            guid = "%s-%s" % (set_type, i)
+            text_a = line[0]
+            text_b = line[1]
+            label = line[2]
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+        return examples
 
 def save_checkpoint(state, ckpt_dir, is_best=False):
     filename = os.path.join(ckpt_dir, 'checkpoint.pth.tar')
@@ -111,6 +189,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         tokenizer = tokenizers[i]
         tok_type_temp = tok_type_list[i]
 
+        #########  根据不同的老师模型来进行 tokenizer
         for (ex_index, example) in enumerate(examples):
             if ex_index % 10000 == 0 and is_master:
                 print("Writing example %d of %d" % (ex_index, len(examples)))
@@ -261,6 +340,117 @@ def load_bert_embedding_weight(model, path, train=False):
     model.load_state_dict(new_dict, strict=False)
 
 
+
+def load_qa_dataset(config):
+
+    task_name = config.datasets
+    processor = QaProcessor()
+    output_mode = "classfication"
+    label_list = processor.get_labels()
+    n_classes = len(label_list)
+
+    ########## load tokenizer in corresponding with the teacher type ########### 
+    if config.teacher_type == 'rAg':
+        tokenizer_r = AutoTokenizer.from_pretrained(
+            config.tokenizer_name if config.tokenizer_name else config.teacher_model[0],
+
+            use_fast=config.use_fast_tokenizer
+        )
+        tokenizer_g = AutoTokenizer.from_pretrained(
+            config.tokenizer_name if config.tokenizer_name else config.teacher_model[1],
+
+            use_fast=config.use_fast_tokenizer
+        )
+        tokenizer = [tokenizer_r, tokenizer_g]
+        print("len tokenizer:",len(tokenizer))
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(
+            config.tokenizer_name if config.tokenizer_name else config.teacher_model,
+
+            use_fast=config.use_fast_tokenizer
+        )
+
+    #### load train and eval dataset
+
+    train_examples = processor.get_train_examples(
+        config.ini_config['train']['data_base_dir'] + config.source + '/' + task_name + '/')
+    train_features = convert_examples_to_features(train_examples, label_list,
+                                                  config.max_seq_length, tokenizer,
+                                                  output_mode, config.is_master, tok_type=config.teacher_type)
+    print("len featuers:",len(train_features))
+    eval_examples = processor.get_dev_examples(config.ini_config['train']['data_base_dir'] + config.source + '/' + task_name +
+                                               '/')
+    eval_features = convert_examples_to_features(eval_examples, label_list,
+                                                 config.max_seq_length, tokenizer,
+                                                 output_mode, config.is_master,
+                                                 tok_type=config.teacher_type)
+
+    if config.teacher_type == 'rAg':
+        train_dataloader = []
+        eval_dataloader = []
+        train_eval_dataloader = []
+        for i in range(2):
+            train_data, _ = get_tensor_data(output_mode, train_features[i])
+            eval_data, eval_labels = get_tensor_data(
+                output_mode, eval_features[i])
+            train_eval_data, _ = get_tensor_data(output_mode, eval_features[i])
+            if not config.multi_gpu:
+                train_sampler = RandomSampler(train_data)
+                train_eval_sampler = RandomSampler(train_eval_data)
+            else:
+                train_sampler = DistributedSampler(train_data)
+                train_eval_sampler = DistributedSampler(train_eval_data)
+            eval_sampler = SequentialSampler(eval_data)
+
+            train_dataloader.append(DataLoader(
+                train_data, sampler=train_sampler, batch_size=config.batch_size))
+            eval_dataloader.append(DataLoader(
+                eval_data, sampler=eval_sampler, batch_size=config.batch_size))
+            train_eval_dataloader.append(DataLoader(train_eval_data, sampler=train_eval_sampler,
+                                                    batch_size=config.batch_size))
+    else:
+        train_data, _ = get_tensor_data(output_mode, train_features)
+        eval_data, eval_labels = get_tensor_data(output_mode, eval_features)
+        train_eval_data, _ = get_tensor_data(output_mode, eval_features)
+        if not config.multi_gpu:
+            train_sampler = RandomSampler(train_data)
+            train_eval_sampler = RandomSampler(train_eval_data)
+        else:
+            train_sampler = DistributedSampler(train_data)
+            train_eval_sampler = DistributedSampler(train_eval_data)
+        eval_sampler = SequentialSampler(eval_data)
+
+        train_dataloader = DataLoader(
+            train_data, sampler=train_sampler, batch_size=config.batch_size)
+        eval_dataloader = DataLoader(
+            eval_data, sampler=eval_sampler, batch_size=config.batch_size)
+        train_eval_dataloader = DataLoader(
+            train_eval_data, sampler=train_eval_sampler, batch_size=config.batch_size)
+
+    if config.teacher_type == 'bert':
+        config.bert_config = BertConfig.from_json_file(
+            config.teacher_model + "/config.json")
+        config.hidden_size = config.bert_config.hidden_size
+    elif config.teacher_type == 'gpt2':
+        config.gpt_config = GPT2Config.from_json_file(
+            config.teacher_model + "/config.json")
+        config.hidden_size = config.gpt_config.n_embd
+    elif config.teacher_type == 'roberta':
+        config.roberta_config = RobertaConfig.from_json_file(
+            config.teacher_model + "/config.json")
+        config.hidden_size = config.roberta_config.hidden_size
+    elif config.teacher_type == 'rAg':
+        config.roberta_config = RobertaConfig.from_json_file(
+            config.teacher_model[0] + "/config.json")
+        config.gpt_config = GPT2Config.from_json_file(
+            config.teacher_model[1] + "/config.json")
+        # 因为是一样的，所以用哪个去填hidden_size无所谓
+        config.hidden_size = config.roberta_config.hidden_size
+
+    return train_dataloader, train_eval_dataloader, eval_dataloader, output_mode, n_classes, config
+
+
+    
 
 def load_glue_dataset(config):
     from transformers.data.processors.glue import glue_processors as processors
