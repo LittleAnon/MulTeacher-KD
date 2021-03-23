@@ -1,8 +1,8 @@
 <!--
  * @Author: your name
  * @Date: 2021-03-06 10:12:51
- * @LastEditTime: 2021-03-06 10:12:51
- * @LastEditors: your name
+ * @LastEditTime: 2021-03-23 11:51:02
+ * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /MulTeacher-KD/Multi-Teacher.md
 -->
@@ -21,6 +21,33 @@
 
 # Model
 
+1、多老师模型的融合方式：
+
+现阶段：
+
+    融合方式比较粗糙，老师模型loss直接累加作为总的loss。
+
+toDo:
+
+    调研loss的训练方式(苏展)
+
+2、架构搜索和EMD是否会对结果有提升
+
+现阶段：
+    实验的结果中EMD对最中对结果贡献不明确
+toDo:
+
+    1、EMD对最终的结果是否有提升，提升多少
+    2、NAS开发
 
 # Experiment
+
+当前实验结果：
+
+https://docs.qq.com/sheet/DT2hQQklWYm1kZldY?tab=BB08J2
+
+当前实验代码：
+
+https://github.com/anonNo2/MulTeacher-KD
+
 
