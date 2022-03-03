@@ -17,6 +17,7 @@
 
 import logging
 import os
+os.environ["WANDB_DISABLED"] = "true"
 import random
 import sys
 from dataclasses import dataclass, field
@@ -455,12 +456,12 @@ def main():
 
             output_eval_file = os.path.join(
                 training_args.output_dir, f"eval_results_{task}.txt")
-            if trainer.is_world_process_zero():
-                with open(output_eval_file, "w") as writer:
-                    logger.info(f"***** Eval results {task} *****")
-                    for key, value in eval_result.items():
-                        logger.info(f"  {key} = {value}")
-                        writer.write(f"{key} = {value}\n")
+            # if trainer.is_world_process_zero():
+            with open(output_eval_file, "w") as writer:
+                logger.info(f"***** Eval results {task} *****")
+                for key, value in eval_result.items():
+                    logger.info(f"  {key} = {value}")
+                    writer.write(f"{key} = {value}\n")
 
             eval_results.update(eval_result)
 
@@ -484,16 +485,16 @@ def main():
 
             output_test_file = os.path.join(
                 training_args.output_dir, f"test_results_{task}.txt")
-            if trainer.is_world_process_zero():
-                with open(output_test_file, "w") as writer:
-                    logger.info(f"***** Test results {task} *****")
-                    writer.write("index\tprediction\n")
-                    for index, item in enumerate(predictions):
-                        if is_regression:
-                            writer.write(f"{index}\t{item:3.3f}\n")
-                        else:
-                            item = label_list[item]
-                            writer.write(f"{index}\t{item}\n")
+            # if trainer.is_world_process_zero():
+            with open(output_test_file, "w") as writer:
+                logger.info(f"***** Test results {task} *****")
+                writer.write("index\tprediction\n")
+                for index, item in enumerate(predictions):
+                    if is_regression:
+                        writer.write(f"{index}\t{item:3.3f}\n")
+                    else:
+                        item = label_list[item]
+                        writer.write(f"{index}\t{item}\n")
     return eval_results
 
 
@@ -504,6 +505,6 @@ def _mp_fn(index):
 
 if __name__ == "__main__":
     '''
-    --task_name mrpc --do_train --do_eval --max_seq_length 128 --per_device_train_batch_size 32 --learning_rate 2e-5 --num_train_epochs 3.0 --overwrite_output_dir --output nouse --cache_model_type roberta
+    --task_name mrpc --do_train --do_eval --max_seq_length 128 --per_device_train_batch_size 32 --learning_rate 2e-5 --num_train_epochs 3.0 --overwrite_output_dir --output nouse --cache_model_type bert
     '''
     main()

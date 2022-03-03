@@ -4,14 +4,17 @@ import os
 import shutil
 
 import numpy as np
+import logging
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 from transformers import RobertaConfig, AutoTokenizer, \
-    GPT2Config, BertConfig, logger
+    GPT2Config, BertConfig
 import os
 import socket
+
+logger = logging.getLogger('imagenet_training')
 
 glue_output_modes = {
     "cola": "classification",
@@ -402,7 +405,7 @@ def init_gpu_params(params):
         params.multi_gpu = False
         return
 
-    assert torch.cuda.is_available()
+    assert torch.cuda.is_available() == True
 
     logger.info("Initializing GPUs")
     if params.n_gpu > 1:

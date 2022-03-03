@@ -86,10 +86,10 @@ class AugmentConfig(BaseConfig):
         parser.add_argument('--drop_path_prob', type=float,
                             default=0.2, help='probability of an path to be zeroed.(我觉得在结构固定时没用)')
 
-        parser.add_argument('--teacher_type', type=str, default=None,
+        parser.add_argument('--teacher_type', type=str, default="bert",
                             help='Pre-trained teacher model selected in the list: bert, roberta, gpt2,rAg(roberta+gpt2)')
-        parser.add_argument('--student_type', type=str, default=None,
-                            help='student model selected in the list: cnn,transform')
+        parser.add_argument('--student_type', type=str, default="tn",
+                            help='student model selected in the list: cnn,transform,tn')
 
         parser.add_argument('--use_kd', type=str2bool,
                             default=True, help='Whether to use the teacher model')

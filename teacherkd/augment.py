@@ -5,7 +5,10 @@ from transformers import RobertaForSequenceClassification, GPT2ForSequenceClassi
 import os
 from math import sqrt
 import sys
-current_dir = os.path.abspath(os.path.dirname(__file__))
+# current_dir = os.path.abspath(os.path.dirname(__file__))
+# print(current_dir)
+current_dir = "/projects/futhark1/data/wzm289/code/MulTeacher-KD/"
+
 sys.path.append(current_dir)
 sys.path.append("..")
 import numpy as np
@@ -23,8 +26,9 @@ from teacherkd.file_logger import FileLogger
 from teacherkd.kdTool import Emd_Evaluator, distillation_loss
 from teacherkd.student_model.cnn.augment_cnn import AugmentCNN
 from teacherkd.student_model.transform.augment_transform import AugmentTransform
+from teacherkd.student_model.tensor_network.TN import TN
 from teacherkd.report.reporter import generate_report_by_metrics
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 task_metric_dict = {
             "cola":'mcc',
@@ -64,7 +68,7 @@ def convert_to_attn(hidns, mask):
 def main():
     config = AugmentConfig()
     init_gpu_params(config)
-    logger = FileLogger('./log', config.is_master, config.is_master)
+    logger = FileLogger(os.path.join(current_dir,'log'), config.is_master, config.is_master)
 
     # set seed
     np.random.seed(config.seed)
@@ -87,6 +91,8 @@ def main():
         model = AugmentCNN(config, n_classes, output_mode, auxiliary=False)
     elif config.student_type == 'transform':
         model = AugmentTransform(config, n_classes ,output_mode)
+    elif config.student_type == "tn":
+        model = TN(config,n_classes,output_mode)
     else:
         raise ValueError("unknown student model type.")
     pre_d, new_d = {}, {}
@@ -315,7 +321,7 @@ def train(logger, config, train_loader, model, teacher_model, optimizer, epoch, 
                     s_layer_out, teacher_reps, return_distance=True)
                 if config.update_emd:
                     emd_tool.update_weight(flow, distance)
-            loss = kd_loss + rep_loss
+            loss = kd_loss
             # loss = kd_loss
         else:
             loss = criterion(logits, y)
